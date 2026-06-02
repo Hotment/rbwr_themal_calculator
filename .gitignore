@@ -1,0 +1,5 @@
+__pycache__
+*.xml
+rbwr_overlay.dist
+settings.json
+*.log
