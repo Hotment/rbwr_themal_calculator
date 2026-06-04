@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.4.1"
+__version__ = "1.5.0"
 
 # --- Update Server Configuration ---
 UPDATE_SERVER_URL = "http://127.0.0.1:8400"
@@ -260,6 +260,8 @@ class OverlayApp:
         self.var_demand.trace_add("write", lambda name, index, mode: self.on_input_update("demand"))
         self.var_rtp.trace_add("write", lambda name, index, mode: self.on_input_update("rtp"))
         self.var_hud_scan = tk.BooleanVar(value=settings.get("enable_hud_scan", True))
+        self.var_compact_menu = tk.BooleanVar(value=self.is_compact)
+        self.var_topmost_menu = tk.BooleanVar(value=self.is_topmost)
         self.skipped_version = settings.get("skipped_version", "")
         
         self.var_hotkey = tk.StringVar(value=settings["hotkey"])
@@ -291,8 +293,9 @@ class OverlayApp:
         self.context_menu = tk.Menu(self.root, tearoff=0, bg=BG_CARD, fg=TEXT_LIGHT, 
                                     activebackground=BG_HEADER, activeforeground=ACCENT_CYAN, 
                                     bd=1, relief="solid", font=("Segoe UI", 9))
-        self.context_menu.add_command(label="Toggle Compact Mode", command=self.toggle_compact)
-        self.context_menu.add_command(label="Toggle Always on Top", command=self.toggle_topmost)
+        self.context_menu.add_checkbutton(label="Compact Mode", variable=self.var_compact_menu, command=self.toggle_compact)
+        self.context_menu.add_checkbutton(label="Always on Top", variable=self.var_topmost_menu, command=self.toggle_topmost)
+        self.context_menu.add_checkbutton(label="Scan HUD First", variable=self.var_hud_scan, command=self.on_hud_scan_menu_toggle)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Exit Application", command=self.quit_app)
         
@@ -323,7 +326,8 @@ class OverlayApp:
 
     def create_widgets(self):
         for child in self.root.winfo_children():
-            child.destroy()
+            if child != self.context_menu:
+                child.destroy()
             
         if self.is_compact:
             self.build_compact_layout()
@@ -349,12 +353,25 @@ class OverlayApp:
         self.is_topmost = not self.is_topmost
         self.root.attributes("-topmost", self.is_topmost)
         symbol = "📌" if self.is_topmost else "📍"
-        self.btn_topmost.config(text=symbol)
+        if hasattr(self, 'btn_topmost') and self.btn_topmost and self.btn_topmost.winfo_exists():
+            self.btn_topmost.config(text=symbol)
+        self.var_topmost_menu.set(self.is_topmost)
         self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
 
     def toggle_compact(self):
         self.is_compact = not self.is_compact
+        self.var_compact_menu.set(self.is_compact)
         self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
         if self.is_compact:
             self.root.geometry(f"{self.width_compact}x{self.height_compact}")
             self.create_widgets()
@@ -393,6 +410,12 @@ class OverlayApp:
         self.btn_topmost.bind("<Button-1>", lambda e: self.toggle_topmost())
         self.btn_topmost.bind("<Enter>", lambda e: self.btn_topmost.config(bg=BG_CARD, fg=ACCENT_CYAN))
         self.btn_topmost.bind("<Leave>", lambda e: self.btn_topmost.config(bg=BG_HEADER, fg=TEXT_MUTED))
+
+        self.btn_feedback = tk.Label(title_bar, text="💬 Feedback", bg=BG_HEADER, fg=TEXT_MUTED, padx=8, font=("Segoe UI", 8, "bold"), cursor="hand2")
+        self.btn_feedback.pack(side="right", fill="y")
+        self.btn_feedback.bind("<Button-1>", lambda e: self.open_suggestions_dialog())
+        self.btn_feedback.bind("<Enter>", lambda e: self.btn_feedback.config(bg=BG_CARD, fg=ACCENT_CYAN))
+        self.btn_feedback.bind("<Leave>", lambda e: self.btn_feedback.config(bg=BG_HEADER, fg=TEXT_MUTED))
 
         container = tk.Frame(self.root, bg=BG_MAIN, padx=15, pady=15)
         container.pack(fill="both", expand=True)
@@ -476,6 +499,8 @@ class OverlayApp:
         self.btn_hud_scan_toggle.bind("<Button-1>", lambda e: self.toggle_hud_scan_setting())
         self.btn_hud_scan_toggle.bind("<Enter>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_HEADER))
         self.btn_hud_scan_toggle.bind("<Leave>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_MAIN))
+
+
 
         input_card = tk.Frame(container, bg=BG_MAIN, bd=1, relief="solid")
         input_card.pack(fill="both", expand=True, pady=(5, 5))
@@ -692,8 +717,9 @@ class OverlayApp:
             
             menu = pystray.Menu(
                 pystray.MenuItem("Show / Restore", lambda icon, item: self.restore_window(), default=True),
-                pystray.MenuItem("Toggle Compact Mode", lambda icon, item: self.toggle_compact()),
-                pystray.MenuItem("Always on Top", lambda icon, item: self.toggle_topmost()),
+                pystray.MenuItem("Compact Mode", lambda icon, item: self.toggle_compact(), checked=lambda item: self.is_compact),
+                pystray.MenuItem("Always on Top", lambda icon, item: self.toggle_topmost(), checked=lambda item: self.is_topmost),
+                pystray.MenuItem("Scan HUD First", lambda icon, item: self.toggle_hud_scan_setting(), checked=lambda item: self.var_hud_scan.get()),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", lambda icon, item: self.quit_app())
             )
@@ -1274,6 +1300,23 @@ class OverlayApp:
             self.btn_hud_scan_toggle.config(text="🟢 ENABLED" if new_val else "🔴 DISABLED",
                                             fg=ACCENT_GREEN if new_val else ACCENT_RED)
         self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
+
+    def on_hud_scan_menu_toggle(self):
+        new_val = self.var_hud_scan.get()
+        if hasattr(self, 'btn_hud_scan_toggle') and self.btn_hud_scan_toggle.winfo_exists():
+            self.btn_hud_scan_toggle.config(text="🟢 ENABLED" if new_val else "🔴 DISABLED",
+                                            fg=ACCENT_GREEN if new_val else ACCENT_RED)
+        self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
 
     def check_for_updates(self):
         if not _is_compiled:
@@ -1364,6 +1407,199 @@ class OverlayApp:
                               font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=10, pady=5, cursor="hand2")
         btn_cancel.pack(side="left", expand=True, fill="x", padx=3)
         btn_cancel.bind("<Button-1>", lambda e: remind_later())
+        btn_cancel.bind("<Enter>", lambda e: btn_cancel.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
+
+    def open_suggestions_dialog(self):
+        popup = tk.Toplevel(self.root)
+        popup.title("Submit Feedback & Suggestions")
+        popup.geometry("380x370")
+        popup.configure(bg=BG_CARD, highlightbackground=ACCENT_CYAN, highlightcolor=ACCENT_CYAN, highlightthickness=1)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        
+        # Center relative to root window
+        x = self.root.winfo_x() + (self.root.winfo_width() - 380) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 370) // 2
+        popup.geometry(f"+{x}+{y}")
+        
+        # Dragging support for the popup
+        drag_data = {"x": 0, "y": 0}
+        def start_drag(event):
+            drag_data["x"] = event.x
+            drag_data["y"] = event.y
+            
+        def do_drag(event):
+            dx = event.x - drag_data["x"]
+            dy = event.y - drag_data["y"]
+            px = popup.winfo_x() + dx
+            py = popup.winfo_y() + dy
+            popup.geometry(f"+{px}+{py}")
+            
+        title_bar = tk.Frame(popup, bg=BG_HEADER, height=30)
+        title_bar.pack(fill="x", side="top")
+        title_bar.bind("<Button-1>", start_drag)
+        title_bar.bind("<B1-Motion>", do_drag)
+        
+        title_lbl = tk.Label(title_bar, text=" 💡 SUBMIT FEEDBACK & SUGGESTIONS", bg=BG_HEADER, fg=ACCENT_CYAN,
+                             font=("Consolas", 9, "bold"))
+        title_lbl.pack(side="left", padx=10, pady=5)
+        title_lbl.bind("<Button-1>", start_drag)
+        title_lbl.bind("<B1-Motion>", do_drag)
+        
+        # Close button in title bar
+        btn_close = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"), cursor="hand2")
+        btn_close.pack(side="right", fill="y")
+        btn_close.bind("<Button-1>", lambda e: popup.destroy())
+        btn_close.bind("<Enter>", lambda e: btn_close.config(bg=ACCENT_RED, fg=TEXT_LIGHT))
+        btn_close.bind("<Leave>", lambda e: btn_close.config(bg=BG_HEADER, fg=TEXT_MUTED))
+
+        content_frame = tk.Frame(popup, bg=BG_CARD, padx=15, pady=10)
+        content_frame.pack(fill="both", expand=True)
+        
+        # Warning label
+        lbl_warning = tk.Label(content_frame, text="⚠️ Warning: Inappropriate feedback/suggestions or spam can result in a permanent or temporary IP ban.",
+                               bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 8, "bold"), justify="left", wraplength=340)
+        lbl_warning.pack(anchor="w", pady=(0, 10))
+        
+        # Name row
+        name_frame = tk.Frame(content_frame, bg=BG_CARD)
+        name_frame.pack(fill="x", pady=(0, 5))
+        
+        lbl_name = tk.Label(name_frame, text="Your Name:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_name.pack(side="left")
+        
+        ent_name = tk.Entry(name_frame, bg=BG_MAIN, fg=TEXT_LIGHT, insertbackground=TEXT_LIGHT, 
+                            disabledbackground=BG_HEADER, disabledforeground=TEXT_MUTED,
+                            font=("Segoe UI", 9), bd=1, relief="solid", width=25)
+        ent_name.pack(side="left", padx=(10, 0))
+        
+        # Anonymous checkbox
+        var_anonymous = tk.BooleanVar(value=True)
+        
+        def toggle_anonymous():
+            if var_anonymous.get():
+                ent_name.delete(0, tk.END)
+                ent_name.config(state="disabled")
+            else:
+                ent_name.config(state="normal")
+                
+        chk_anon = tk.Checkbutton(content_frame, text="Submit Anonymously", variable=var_anonymous,
+                                  onvalue=True, offvalue=False, command=toggle_anonymous,
+                                  bg=BG_CARD, fg=TEXT_LIGHT, selectcolor=BG_MAIN, activebackground=BG_CARD,
+                                  activeforeground=TEXT_LIGHT, font=("Segoe UI", 9), bd=0, highlightthickness=0)
+        chk_anon.pack(anchor="w", pady=(0, 10))
+        
+        # Disable name by default since anonymous is True
+        ent_name.config(state="disabled")
+        
+        # Suggestion body label
+        lbl_body = tk.Label(content_frame, text="Feedback / Suggestion details:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_body.pack(anchor="w", pady=(0, 3))
+        
+        # Text widget for suggestion details
+        txt_body = tk.Text(content_frame, bg=BG_MAIN, fg=TEXT_LIGHT, insertbackground=TEXT_LIGHT,
+                           font=("Segoe UI", 9), bd=1, relief="solid", height=6, wrap="word")
+        txt_body.pack(fill="both", expand=True, pady=(0, 10))
+        
+        # Status message label
+        lbl_status = tk.Label(content_frame, text="", bg=BG_CARD, fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold"), wraplength=340, justify="center")
+        lbl_status.pack(pady=(0, 5))
+        
+        # Buttons frame
+        btn_frame = tk.Frame(content_frame, bg=BG_CARD)
+        btn_frame.pack(fill="x", side="bottom")
+        
+        submit_in_progress = False
+
+        def perform_submit():
+            nonlocal submit_in_progress
+            if submit_in_progress:
+                return
+            sug_text = txt_body.get("1.0", tk.END).strip()
+            if not sug_text:
+                lbl_status.config(text="Error: Feedback details cannot be empty.", fg=ACCENT_RED)
+                return
+            
+            name_val = ent_name.get().strip() if not var_anonymous.get() else ""
+            is_anon = var_anonymous.get()
+            
+            lbl_status.config(text="Sending feedback...", fg=ACCENT_CYAN)
+            submit_in_progress = True
+            
+            # Start background thread to submit
+            def run_submit():
+                nonlocal submit_in_progress
+                import urllib.request
+                import urllib.error
+                import json
+                
+                payload = {
+                    "name": name_val,
+                    "suggestion": sug_text,
+                    "anonymous": is_anon
+                }
+                
+                try:
+                    data_bytes = json.dumps(payload).encode('utf-8')
+                    req = urllib.request.Request(
+                        f"{UPDATE_SERVER_URL}/suggestions",
+                        data=data_bytes,
+                        headers={
+                            "Content-Type": "application/json",
+                            "User-Agent": "RBWR-Overlay-Client"
+                        },
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        if resp.status == 200:
+                            def success_ui():
+                                lbl_status.config(text="Feedback submitted successfully!", fg=ACCENT_GREEN)
+                                txt_body.delete("1.0", tk.END)
+                                popup.after(1500, popup.destroy)
+                            popup.after(0, success_ui)
+                        else:
+                            def fail_ui():
+                                nonlocal submit_in_progress
+                                lbl_status.config(text=f"Error: Server returned status {resp.status}", fg=ACCENT_RED)
+                                submit_in_progress = False
+                            popup.after(0, fail_ui)
+                except urllib.error.HTTPError as he:
+                    # Read the error body synchronously on the background thread
+                    reason = he.reason
+                    try:
+                        body = he.read().decode('utf-8')
+                        detail = json.loads(body).get("detail", reason)
+                    except Exception:
+                        detail = reason
+                    
+                    def http_err_ui():
+                        nonlocal submit_in_progress
+                        lbl_status.config(text=f"Error: {detail}", fg=ACCENT_RED)
+                        submit_in_progress = False
+                    popup.after(0, http_err_ui)
+                except Exception as ex:
+                    def err_ui():
+                        nonlocal submit_in_progress
+                        lbl_status.config(text="Error: Connection to server failed.", fg=ACCENT_RED)
+                        submit_in_progress = False
+                    popup.after(0, err_ui)
+                    
+            threading.Thread(target=run_submit, daemon=True).start()
+
+        # Submit button
+        btn_submit = tk.Label(btn_frame, text="Submit", bg=BG_MAIN, fg=ACCENT_GREEN,
+                              font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=15, pady=5, cursor="hand2")
+        btn_submit.pack(side="right", padx=(5, 0))
+        btn_submit.bind("<Button-1>", lambda e: perform_submit())
+        btn_submit.bind("<Enter>", lambda e: btn_submit.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_submit.bind("<Leave>", lambda e: btn_submit.config(bg=BG_MAIN, fg=ACCENT_GREEN))
+        
+        # Cancel button
+        btn_cancel = tk.Label(btn_frame, text="Cancel", bg=BG_MAIN, fg=TEXT_MUTED,
+                              font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=15, pady=5, cursor="hand2")
+        btn_cancel.pack(side="right")
+        btn_cancel.bind("<Button-1>", lambda e: popup.destroy())
         btn_cancel.bind("<Enter>", lambda e: btn_cancel.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
 

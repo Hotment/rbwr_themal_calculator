@@ -5,3 +5,6 @@ settings.json
 *.log
 *test.py
 verify_calculations.py
+.env
+banned_ips.json
+suggestions.json
