@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 # --- Update Server Configuration ---
 UPDATE_SERVER_URL = "http://127.0.0.1:8400"
@@ -106,10 +106,56 @@ TEXT_MUTED = "#6c7d93"    # Muted control-room slate blue
 ACCENT_RED = "#ff003c"    # Emergency SCRAM laser red
 ACCENT_GOLD = "#ffaa00"   # Warning amber isotope yellow
 
+APRMtoRecircTable = {
+    0: 28,
+    10: 28,
+    20: 28,
+    30: 28,
+    40: 38,
+    50: 50,
+    60: 70,
+    70: 85,
+    80: 90,
+    90: 97,
+    100: 100,
+    110: 100
+}
+
+class UsageCalculator:
+    def __init__(self, unit=1): # all usages are in MW/1kg or per pump(MW)
+        if unit == 1:
+            self.feedwater_usage = 0.014
+            self.condenser_usage = 0.007
+            self.condenser_circ_usage = 6.5
+            self.recirculation_usage = 0.028
+        elif unit == 2:
+            self.feedwater_usage = 0.014
+            self.condenser_usage = 0.007
+            self.condenser_circ_usage = 6.5
+            self.recirculation_usage = 0.028
+        else:
+            raise ValueError("Invalid unit number. Unit must be 1 or 2.")
+
+    def aprm_to_recirc_pump_speed(self, aprm):
+        for aprm_value in sorted(APRMtoRecircTable.keys()):
+            if aprm_value >= aprm:
+                return APRMtoRecircTable[aprm_value]
+        return APRMtoRecircTable[max(APRMtoRecircTable.keys())]
+
+    def calculate_usage(self, feedwater_flow, aprm):
+        feedwater_usage = self.feedwater_usage * feedwater_flow
+        condenser_usage = self.condenser_usage * feedwater_flow
+        recirculation_usage = self.recirculation_usage * self.aprm_to_recirc_pump_speed(aprm) * 10
+
+        total_usage = feedwater_usage + condenser_usage + self.condenser_circ_usage * 2 + recirculation_usage
+        return round(total_usage, 2)
+
 class Calculator:
     def __init__(self, usage=61.32):
         self.usage = usage
         self.selected_unit = 1
+        self.usage_calc1 = UsageCalculator(1)
+        self.usage_calc2 = UsageCalculator(2)
 
     def set_usage(self, val_str):
         try:
@@ -131,16 +177,29 @@ class Calculator:
             return max(0.0, -143 + (12.5 * thermal) - (2.06 * 10**-3 * (thermal**2)))
 
     def calc_thermal(self, demand):
-        if self.selected_unit == 1:
-            inner = 169 + 0.02132 * (demand + 135 + self.usage)
-            if inner < 0:
-                return 0.0
-            return max(0.0, (-13 + math.sqrt(inner)) / 0.01066)
-        else:
-            inner = 156.25 + 0.00824 * (demand + 143 + self.usage)
-            if inner < 0:
-                return 0.0
-            return max(0.0, (-12.5 + math.sqrt(inner)) / 0.00412)
+        current_usage = self.usage
+        thermal = 0.0
+        for _ in range(5):
+            if self.selected_unit == 1:
+                inner = 169 + 0.02132 * (demand + 135 + current_usage)
+                if inner < 0:
+                    thermal = 0.0
+                else:
+                    thermal = max(0.0, (-13 + math.sqrt(inner)) / 0.01066)
+            else:
+                inner = 156.25 + 0.00824 * (demand + 143 + current_usage)
+                if inner < 0:
+                    thermal = 0.0
+                else:
+                    thermal = max(0.0, (-12.5 + math.sqrt(inner)) / 0.00412)
+            
+            # Calculate dynamic usage for this thermal power
+            flow = self.calc_flow(thermal)
+            u_calc = self.usage_calc1 if self.selected_unit == 1 else self.usage_calc2
+            current_usage = u_calc.calculate_usage(flow, thermal)
+        
+        self.usage = current_usage
+        return thermal
 
 
 class OverlayApp:
@@ -189,7 +248,7 @@ class OverlayApp:
         
         self.width_detailed = 420
         self.height_detailed = 420
-        self.width_compact = 450
+        self.width_compact = 430
         self.height_compact = 60
         
         self._drag_data = {"x": 0, "y": 0}
@@ -237,7 +296,10 @@ class OverlayApp:
         
         self.root.bind("<Button-3>", self.show_context_menu)
         
-        self.center_window(self.width_detailed, self.height_detailed)
+        if self.is_compact:
+            self.center_window(self.width_compact, self.height_compact)
+        else:
+            self.center_window(self.width_detailed, self.height_detailed)
         self.create_widgets()
         self.update_calculations(source="demand")
         
@@ -369,11 +431,10 @@ class OverlayApp:
         lbl_usage.grid(row=0, column=0, sticky="w", pady=4)
         
         self.var_usage = tk.StringVar(value=str(self.calc.usage))
-        self.ent_usage = tk.Entry(self.config_panel, textvariable=self.var_usage, bg=BG_MAIN, fg=TEXT_LIGHT, 
-                                  insertbackground=TEXT_LIGHT, font=("Consolas", 10), bd=0, highlightthickness=1, 
-                                  highlightcolor=ACCENT_CYAN, highlightbackground=TEXT_MUTED, width=10, justify="center")
+        self.ent_usage = tk.Entry(self.config_panel, textvariable=self.var_usage, bg=BG_CARD, fg=ACCENT_CYAN, 
+                                  readonlybackground=BG_CARD, insertbackground=TEXT_LIGHT, font=("Consolas", 10, "bold"), 
+                                  bd=0, highlightthickness=0, width=10, justify="center", state="readonly")
         self.ent_usage.grid(row=0, column=1, sticky="e", padx=10, pady=4)
-        self.var_usage.trace_add("write", self.on_usage_change)
 
         lbl_opacity = tk.Label(self.config_panel, text="Overlay Opacity:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
         lbl_opacity.grid(row=1, column=0, sticky="w", pady=4)
@@ -515,16 +576,33 @@ class OverlayApp:
         self.make_draggable(compact_frame)
         compact_frame.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
+        # Pack right-side control buttons first so they are never clipped/hidden when layout expands
+        btn_close = tk.Label(compact_frame, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 9, "bold"), cursor="hand2")
+        btn_close.pack(side="right", padx=2)
+        btn_close.bind("<Button-1>", lambda e: self.quit_app())
+        btn_close.bind("<Enter>", lambda e: btn_close.config(fg=ACCENT_RED))
+        btn_close.bind("<Leave>", lambda e: btn_close.config(fg=TEXT_MUTED))
+
+        btn_exp = tk.Label(compact_frame, text="⛶", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 9), cursor="hand2")
+        btn_exp.pack(side="right", padx=6)
+        btn_exp.bind("<Button-1>", lambda e: self.toggle_compact())
+        btn_exp.bind("<Enter>", lambda e: btn_exp.config(fg=ACCENT_CYAN))
+        btn_exp.bind("<Leave>", lambda e: btn_exp.config(fg=TEXT_MUTED))
+
         handle = tk.Label(compact_frame, text="⋮⋮", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 12, "bold"), cursor="fleur")
         handle.pack(side="left", padx=(0, 5))
         self.make_draggable(handle)
         handle.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        unit_text = f"U{self.calc.selected_unit}"
-        self.btn_compact_unit = tk.Label(compact_frame, text=unit_text, bg=BG_CARD, fg=ACCENT_CYAN,
-                                         font=("Segoe UI", 8, "bold"), padx=4, pady=2, cursor="hand2")
-        self.btn_compact_unit.pack(side="left", padx=2)
-        self.btn_compact_unit.bind("<Button-1>", lambda e: self.toggle_compact_unit())
+        self.btn_compact_u1 = tk.Label(compact_frame, text="U1", bg=BG_HEADER, fg=TEXT_MUTED,
+                                       font=("Segoe UI", 8, "bold"), padx=4, pady=2, cursor="hand2")
+        self.btn_compact_u1.pack(side="left", padx=(2, 1))
+        self.btn_compact_u1.bind("<Button-1>", lambda e: self.select_unit(1))
+
+        self.btn_compact_u2 = tk.Label(compact_frame, text="U2", bg=BG_HEADER, fg=TEXT_MUTED,
+                                       font=("Segoe UI", 8, "bold"), padx=4, pady=2, cursor="hand2")
+        self.btn_compact_u2.pack(side="left", padx=(1, 2))
+        self.btn_compact_u2.bind("<Button-1>", lambda e: self.select_unit(2))
 
         lbl_mw = tk.Label(compact_frame, text="MWt:", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 8, "bold"))
         lbl_mw.pack(side="left", padx=2)
@@ -561,31 +639,26 @@ class OverlayApp:
         self.make_draggable(lbl_arrow)
         lbl_arrow.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        self.lbl_compact_rtp = tk.Label(compact_frame, text="0.0% RTP", bg=BG_HEADER, fg=ACCENT_CYAN,
-                                        font=("Consolas", 11, "bold"))
-        self.lbl_compact_rtp.pack(side="left", padx=5)
+        # Stack RTP and Flow vertically to save horizontal space
+        telemetry_frame = tk.Frame(compact_frame, bg=BG_HEADER)
+        telemetry_frame.pack(side="left", padx=5)
+        self.make_draggable(telemetry_frame)
+        telemetry_frame.bind("<Double-Button-1>", lambda e: self.toggle_compact())
+
+        self.lbl_compact_rtp = tk.Label(telemetry_frame, text="0.0% RTP", bg=BG_HEADER, fg=ACCENT_CYAN,
+                                         font=("Consolas", 10, "bold"))
+        self.lbl_compact_rtp.pack(side="top", anchor="w")
         self.make_draggable(self.lbl_compact_rtp)
         self.lbl_compact_rtp.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        self.lbl_compact_flow = tk.Label(compact_frame, text="[0 kg/s]", bg=BG_HEADER, fg=TEXT_MUTED,
-                                         font=("Consolas", 9))
-        self.lbl_compact_flow.pack(side="left", padx=2)
+        self.lbl_compact_flow = tk.Label(telemetry_frame, text="[0 kg/s]", bg=BG_HEADER, fg=TEXT_MUTED,
+                                         font=("Consolas", 8))
+        self.lbl_compact_flow.pack(side="top", anchor="w")
         self.make_draggable(self.lbl_compact_flow)
         self.lbl_compact_flow.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        btn_close = tk.Label(compact_frame, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 9, "bold"), cursor="hand2")
-        btn_close.pack(side="right", padx=2)
-        btn_close.bind("<Button-1>", lambda e: self.quit_app())
-        btn_close.bind("<Enter>", lambda e: btn_close.config(fg=ACCENT_RED))
-        btn_close.bind("<Leave>", lambda e: btn_close.config(fg=TEXT_MUTED))
-
-        btn_exp = tk.Label(compact_frame, text="⛶", bg=BG_HEADER, fg=TEXT_MUTED, font=("Segoe UI", 9), cursor="hand2")
-        btn_exp.pack(side="right", padx=6)
-        btn_exp.bind("<Button-1>", lambda e: self.toggle_compact())
-        btn_exp.bind("<Enter>", lambda e: btn_exp.config(fg=ACCENT_CYAN))
-        btn_exp.bind("<Leave>", lambda e: btn_exp.config(fg=TEXT_MUTED))
-
         self.update_scan_button_styles()
+        self.update_unit_ui_state()
 
     def adjust_demand(self, amount):
         try:
@@ -603,10 +676,7 @@ class OverlayApp:
 
     def toggle_compact_unit(self):
         next_unit = 2 if self.calc.selected_unit == 1 else 1
-        self.calc.selected_unit = next_unit
-        self.btn_compact_unit.config(text=f"U{next_unit}")
-        self.update_calculations(source="demand")
-        self.save_settings()
+        self.select_unit(next_unit)
 
     def setup_tray_icon(self):
         try:
@@ -883,9 +953,10 @@ class OverlayApp:
                 pass
             
         self.hotkey_thread_active = True
-        threading.Thread(target=self.hotkey_loop, daemon=True).start()
+        hotkey_val = self.var_hotkey.get().upper()
+        threading.Thread(target=self.hotkey_loop, args=(hotkey_val,), daemon=True).start()
 
-    def hotkey_loop(self):
+    def hotkey_loop(self, current_key):
         import time
         from ctypes import wintypes
         user32 = ctypes.windll.user32
@@ -906,9 +977,6 @@ class OverlayApp:
         VK_MAP["TAB"] = 0x09
         VK_MAP["RETURN"] = 0x0D
         
-        time.sleep(0.5)
-        
-        current_key = self.var_hotkey.get().upper()
         vk = VK_MAP.get(current_key)
         if vk is None:
             self.log_diag(f"Key {current_key} not globally bindable", "warning")
@@ -1065,6 +1133,20 @@ class OverlayApp:
                     detected_unit = 2
                 detected_demand = float(demand_match.group(2))
 
+            # Scan the rest of the text for a general unit indicator if not found via HUD demand labels
+            if detected_unit is None:
+                unit_word_match = re.search(r'(?i)\bUnit\s*0?([12])\b', full_text)
+                if unit_word_match:
+                    detected_unit = int(unit_word_match.group(1))
+                else:
+                    unit_cleaned_match = re.search(r'(?i)Unit0?([12])', cleaned)
+                    if unit_cleaned_match:
+                        detected_unit = int(unit_cleaned_match.group(1))
+                    else:
+                        u_word_match = re.search(r'(?i)\bU([12])\b', full_text)
+                        if u_word_match:
+                            detected_unit = int(u_word_match.group(1))
+
             if detected_demand is not None:
                 self.log_diag(f"Matched HUD: U{detected_unit or '?'}({detected_demand})", "success")
                 self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
@@ -1075,7 +1157,8 @@ class OverlayApp:
                 val1 = float(match_net.group(1))
                 val2 = float(match_net.group(2)) if match_net.group(2) else None
                 
-                if self.calc.selected_unit == 1:
+                active_unit = detected_unit if detected_unit is not None else self.calc.selected_unit
+                if active_unit == 1:
                      detected_demand = val1
                 else:
                     if val2 is not None:
@@ -1086,22 +1169,22 @@ class OverlayApp:
                     else:
                         detected_demand = val1
                 
-                self.log_diag(f"Matched Net: D({detected_demand})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(self.calc.selected_unit, detected_demand))
+                self.log_diag(f"Matched Net: D({detected_demand}) (Unit: {active_unit})", "success")
+                self.root.after(0, lambda: self.apply_auto_telemetry(active_unit, detected_demand))
                 return True
 
             match_fallback = re.search(r'(?i)Demand(\d+)', cleaned)
             if match_fallback:
                 detected_demand = float(match_fallback.group(1))
-                self.log_diag(f"Matched Fallback: D({detected_demand})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(None, detected_demand))
+                self.log_diag(f"Matched Fallback: D({detected_demand}) (Unit: {detected_unit})", "success")
+                self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True
 
             match_generic = re.search(r'(?i)(?:demand|load|dem)[A-Za-z]*(\d+)', cleaned)
             if match_generic:
                 detected_demand = float(match_generic.group(1))
-                self.log_diag(f"Matched Generic: D({detected_demand})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(None, detected_demand))
+                self.log_diag(f"Matched Generic: D({detected_demand}) (Unit: {detected_unit})", "success")
+                self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True
 
             snippet = (full_text[:20] + "...") if len(full_text) > 20 else full_text
@@ -1143,13 +1226,21 @@ class OverlayApp:
             self.root.after(0, lambda: self.lbl_debug.config(text=f"[ OCR: {message.upper()} ]", fg=color))
 
     def update_unit_ui_state(self):
-        if hasattr(self, 'btn_u1') and hasattr(self, 'btn_u2'):
+        if hasattr(self, 'btn_u1') and hasattr(self, 'btn_u2') and self.btn_u1.winfo_exists() and self.btn_u2.winfo_exists():
             if self.calc.selected_unit == 1:
                 self.btn_u1.config(bg=BG_CARD, fg=ACCENT_CYAN, text="❖ UNIT 01 ❖", bd=1, relief="solid")
                 self.btn_u2.config(bg=BG_MAIN, fg=TEXT_MUTED, text="  UNIT 02  ", bd=0, relief="flat")
             else:
                 self.btn_u1.config(bg=BG_MAIN, fg=TEXT_MUTED, text="  UNIT 01  ", bd=0, relief="flat")
                 self.btn_u2.config(bg=BG_CARD, fg=ACCENT_CYAN, text="❖ UNIT 02 ❖", bd=1, relief="solid")
+
+        if hasattr(self, 'btn_compact_u1') and hasattr(self, 'btn_compact_u2') and self.btn_compact_u1.winfo_exists() and self.btn_compact_u2.winfo_exists():
+            if self.calc.selected_unit == 1:
+                self.btn_compact_u1.config(bg=ACCENT_CYAN, fg=BG_MAIN)
+                self.btn_compact_u2.config(bg=BG_HEADER, fg=TEXT_MUTED)
+            else:
+                self.btn_compact_u1.config(bg=BG_HEADER, fg=TEXT_MUTED)
+                self.btn_compact_u2.config(bg=ACCENT_CYAN, fg=BG_MAIN)
 
     def toggle_config_panel(self):
         self.show_config = not self.show_config
@@ -1356,7 +1447,8 @@ class OverlayApp:
                     gen_load = self.calc.calc_gen_load(thermal)
                     
                     self.var_rtp.set(f"{thermal:.3f}")
-                    
+                    if hasattr(self, 'var_usage') and self.var_usage:
+                        self.var_usage.set(f"{self.calc.usage:.2f}")
                     self.render_outputs(thermal, flow, gen_load)
             
             elif source == "rtp":
@@ -1374,11 +1466,18 @@ class OverlayApp:
                 else:
                     flow = self.calc.calc_flow(thermal_val)
                     gen_load = self.calc.calc_gen_load(thermal_val)
+                    
+                    # Update dynamic usage
+                    u_calc = self.calc.usage_calc1 if self.calc.selected_unit == 1 else self.calc.usage_calc2
+                    self.calc.usage = u_calc.calculate_usage(flow, thermal_val)
+                    
                     demand = round(gen_load - self.calc.usage, 2)
                     if demand < 0:
                         demand = 0.0
                     
                     self.var_demand.set(f"{demand:.2f}")
+                    if hasattr(self, 'var_usage') and self.var_usage:
+                        self.var_usage.set(f"{self.calc.usage:.2f}")
                     
                     self.render_outputs(thermal_val, flow, gen_load)
         except Exception as e:
