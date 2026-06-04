@@ -53,6 +53,9 @@ nuitka --standalone --onefile --windows-console-mode=attach --windows-icon-from-
 
 if %ERRORLEVEL% equ 0 (
     echo.
+    echo [OK] Executable compiled successfully. Running automatic version updater and deployer...
+    python update_version.py
+    echo.
     echo ==================================================
     echo ✅ COMPILATION COMPLETED SUCCESSFULLY!
     echo The compiled executable is in: D:\workspace\rbwr_apr_overlay\rbwr_overlay.exe

@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 # --- Update Server Configuration ---
 UPDATE_SERVER_URL = "http://127.0.0.1:8400"
@@ -107,7 +107,7 @@ ACCENT_RED = "#ff003c"    # Emergency SCRAM laser red
 ACCENT_GOLD = "#ffaa00"   # Warning amber isotope yellow
 
 APRMtoRecircTable = {
-    0: 28,
+    0: 0,
     10: 28,
     20: 28,
     30: 28,
@@ -123,16 +123,18 @@ APRMtoRecircTable = {
 
 class UsageCalculator:
     def __init__(self, unit=1): # all usages are in MW/1kg or per pump(MW)
+        self.unit = unit
         if unit == 1:
             self.feedwater_usage = 0.014
-            self.condenser_usage = 0.007
+            self.condenser_usage = 0.007 # per kg
             self.condenser_circ_usage = 6.5
             self.recirculation_usage = 0.028
         elif unit == 2:
-            self.feedwater_usage = 0.014
-            self.condenser_usage = 0.007
+            self.feedwater_usage = 0.013
+            self.condenser_usage = 3.1850 # per pump
             self.condenser_circ_usage = 6.5
-            self.recirculation_usage = 0.028
+            self.recirculation_usage = 0.01
+            self.tower_makeup_usage = 0.5
         else:
             raise ValueError("Invalid unit number. Unit must be 1 or 2.")
 
@@ -144,7 +146,7 @@ class UsageCalculator:
 
     def calculate_usage(self, feedwater_flow, aprm):
         feedwater_usage = self.feedwater_usage * feedwater_flow
-        condenser_usage = self.condenser_usage * feedwater_flow
+        condenser_usage = self.condenser_usage * 2 if self.unit == 2 else self.condenser_usage * feedwater_flow
         recirculation_usage = self.recirculation_usage * self.aprm_to_recirc_pump_speed(aprm) * 10
 
         total_usage = feedwater_usage + condenser_usage + self.condenser_circ_usage * 2 + recirculation_usage
