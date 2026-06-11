@@ -334,3 +334,18 @@ def view_suggestions_dashboard(username: str = Depends(authenticate_admin)):
         
     html_content = html_content.replace("__USERNAME__", username)
     return HTMLResponse(content=html_content, status_code=200)
+
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+    
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    
+    host = os.environ.get("HOST", "0.0.0.0")
+    try:
+        port = int(os.environ.get("SERVER_PORT", "8400"))
+    except ValueError:
+        port = 8400
+        
+    print(f"Starting server on http://{host}:{port}")
+    uvicorn.run("app:app", host=host, port=port, reload=True)
