@@ -30,6 +30,12 @@
             "filename": "rbwr_overlay_v1.5.1.exe",
             "release_date": "2026-06-07",
             "notes": "Updated U2 power and site usage calculations and added version indicators."
+        },
+        "1.5.2": {
+            "version": "1.5.2",
+            "filename": "rbwr_overlay_v1.5.2.exe",
+            "release_date": "2026-06-12",
+            "notes": "Updated suggestions server url and updated python to 3.14."
         }
     }
 }
