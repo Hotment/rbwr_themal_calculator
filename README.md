@@ -1,64 +1,79 @@
-# ⚡ RBWR APR Transparent Overlay Calculator
+# RBWR APR Transparent Overlay Calculator
 
-A sleek, modern, zero-dependency Python desktop overlay designed for the Roblox **Realistic Boiling Water Reactor (RBWR)** simulation. This utility allows you to instantly calculate Reactor Thermal Power (RTP% / APRM) and other essential values from MWt demand (and vice-versa) directly on your screen while playing!
-
-Inspired by and numerically identical to the calculations at [rbwr.nxrvi.com/tools/demandcalc.html](https://rbwr.nxrvi.com/tools/demandcalc.html).
+A transparent desktop overlay tool designed for the Roblox **Realistic Boiling Water Reactor (RBWR)** simulation. This utility calculates Reactor Thermal Power (RTP% / APRM) and other essential values from MWt demand (and vice-versa) in real-time, directly on your screen while playing.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🖥️ **Always-On-Top Overlay**: Stays pinned on top of your Roblox game window.
-- 🪟 **Glassmorphic Transparency**: Dynamic transparency slider (from 30% to 100% opacity) for optimal visibility.
-- 🖱️ **Borderless & Draggable**: Click and drag anywhere on the panel to reposition it seamlessly.
-- ⚡ **Bidirectional Live Calculations**:
-  - Enter **MWt (Demand)** to get **RTP (%)**, **Gen Load (MWe)**, and **Feedwater Flow (kg/s)**.
-  - Enter **RTP (%)** to get the required **MWt (Demand)**, **Gen Load (MWe)**, and **Feedwater Flow (kg/s)**.
-- 🎛️ **Dual-Unit Support**: Quick toggle tabs for both **Unit 1** and **Unit 2** calculations.
-- ⚙️ **Configurable Site Usage**: Adjust the **Site Usage in MWe** (default: `61.32`) to fit your current reactor setup.
-- 🔢 **Demand Quick Steps**: `-10` / `+10` quick adjust buttons to easily step your load in multiples of 10.
-- 🚨 **Overpower Warning**: Instantly activates a crimson isotope-glow warning screen if the calculated thermal power goes above the safe limit (**110% RTP for Unit 1**, and **115% RTP for Unit 2**).
-- ⛶ **Ultra-Compact Mode**: Collapses the overlay into a tiny, space-saving bar (`360x60` px) displaying only essential parameters: `[Unit] [Input MWt] ➔ [RTP%] [Feedwater]`.
+*   **Transparent Overlay:** Borderless, always-on-top window that sits on top of your Roblox game. Opacity is adjustable (from 30% to 100%) via a configuration slider.
+*   **Dual UI Modes:** Toggle between a detailed telemetry view and a compact bar mode (360x60 px) that acts as a minimal in-game HUD.
+*   **Automatic Screen Scanning (OCR):** Integrates RapidOCR to scan active window text, allowing you to grab target demand values directly from your game window via hotkey (default: `F7`).
+*   **Dynamic Usage Solver:** Runs a 5-step iterative solver to calculate thermal requirements while dynamically accounting for current auxiliary site usage (recirculation pumps, feedwater pumps, condenser pumps, etc.).
+*   **Overpower Safe Limit Alert:** Flashes a red warning indicator if the calculated core power goes above safe limits (110% RTP for Unit 1, and 115% RTP for Unit 2).
+*   **Multi-Unit Layouts:** Dedicated calculations and settings for both Unit 1 and Unit 2.
 
 ---
 
-## 🚀 How to Run
+## Installation & Running
 
-Since the application is written in standard Python using `tkinter`, it has **zero external dependencies**! You do not need to install anything.
+The overlay requires Python 3.10+ and uses external libraries for GUI image rendering and OCR scanning.
 
-1. Open your terminal or Command Prompt in the workspace directory.
-2. Run the application:
+1. Clone or download the repository files.
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
    ```bash
    python rbwr_overlay.py
    ```
 
----
-
-## 🎮 Overlay Controls
-
-- **Reposition Window**: Left-click and hold anywhere on the title bar or background card, then drag your mouse.
-- **Toggle Always-on-Top**: Click the pin icon (`📌` / `📍`) on the top right.
-- **Toggle Compact Mode**: Click the window icon (`⛶`) to shrink the UI to a tiny in-game HUD. Click it again to expand to detailed view.
-- **Step Demand +/- 10**: Click the `-10` / `+10` buttons next to the demand input in detailed mode, or click `-` / `+` next to it in compact mode to instantly step the demand.
-- **Toggle Unit**: Click the **UNIT 1** / **UNIT 2** tabs in detailed mode, or click the **U1** / **U2** badge in compact mode.
-- **Close Utility**: Click the `✕` in the top right.
+To compile the application into a standalone Windows executable (`rbwr_overlay.exe`), run:
+```cmd
+compile.bat
+```
 
 ---
 
-## 📊 Math & Formulas Reference
+## Overlay Controls
+
+*   **Reposition Window:** Left-click and hold anywhere on the title bar or background panel, then drag.
+*   **Toggle Always-on-Top:** Click the pin icon (`📌` / `📍`) in the top right.
+*   **Toggle Compact Mode:** Click the window icon (`⛶`) to shrink the UI to a tiny HUD. Double-clicking the compact bar background also returns the window to detailed mode.
+*   **Adjust Opacity:** Open the configuration panel (gear icon) and adjust the transparency slider.
+*   **Toggle Unit:** Click the **UNIT 1** / **UNIT 2** buttons in detailed mode, or the **U1** / **U2** badges in compact mode.
+*   **Exit Utility:** Click the `✕` button or right-click the overlay to select Exit from the context menu.
+
+---
+
+## Feedback & Suggestions
+
+I welcome your feedback and ideas for new features! You can submit suggestions directly within the overlay window:
+1. Open the detailed telemetry view.
+2. Click the **💬 Feedback** button in the top title bar.
+3. Fill out the dialog (submissions can be named or entirely anonymous) and click Submit.
+
+*Note: To prevent spam, the update server enforces a rate limit of 1 submission per 12 hours per IP address.*
+
+---
+
+## Calculation Reference
+
+The calculator uses the following quadratic relationships to map core thermal power ($t$) to generator load and feedwater flow.
 
 ### Unit 1
-*   **Thermal Power (%)** from Demand ($d$):
-    $$Thermal = \max\left(0, \frac{-13 + \sqrt{169 + 0.02132 \times (d + 135 + siteUsage)}}{0.01066}\right)$$
-*   **Gen Load (MWe)**:
+*   **Thermal Power (%)** from Demand ($d$) and current auxiliary usage ($u$):
+    $$t = \max\left(0, \frac{-13 + \sqrt{169 + 0.02132 \times (d + 135 + u)}}{0.01066}\right)$$
+*   **Generator Load (MWe):**
     $$GenLoad = \max\left(0, -135 + 13 \times t + 5.33 \times 10^{-3} \times t^2\right)$$
-*   **Feedwater Flow (kg/s)**:
+*   **Feedwater Flow (kg/s):**
     $$Flow = \max\left(0, 82.8 + 13.7 \times t + 5.87 \times 10^{-3} \times t^2\right) + 2$$
 
 ### Unit 2
-*   **Thermal Power (%)** from Demand ($d$):
-    $$Thermal = \max\left(0, \frac{-12.5 + \sqrt{156.25 + 0.00824 \times (d + 143 + siteUsage)}}{0.00412}\right)$$
-*   **Gen Load (MWe)**:
-    $$GenLoad = \max\left(0, -143 + 12.5 \times t - 2.06 \times 10^{-3} \times t^2\right)$$
-*   **Feedwater Flow (kg/s)**:
-    $$Flow = \max\left(0, 115 + 12.2 \times t + 9.27 \times 10^{-3} \times t^2\right) + 2$$
+*   **Thermal Power (%)** from Demand ($d$) and current auxiliary usage ($u$):
+    $$t = \max\left(0, \frac{-10.9 + \sqrt{118.81 + 0.0952 \times (82.3 + d + u)}}{0.0476}\right)$$
+*   **Generator Load (MWe):**
+    $$GenLoad = \max\left(0, -82.3 + 10.9 \times t + 0.0238 \times t^2\right)$$
+*   **Feedwater Flow (kg/s):**
+    $$Flow = \max\left(0, 160.0 + 11.6 \times t + 0.0249 \times t^2\right) + 2$$

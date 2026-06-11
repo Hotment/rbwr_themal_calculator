@@ -57,13 +57,13 @@ if %ERRORLEVEL% equ 0 (
     python update_version.py
     echo.
     echo ==================================================
-    echo ✅ COMPILATION COMPLETED SUCCESSFULLY!
+    echo COMPILATION COMPLETED SUCCESSFULLY!
     echo The compiled executable is in: D:\workspace\rbwr_apr_overlay\rbwr_overlay.exe
     echo ==================================================
 ) else (
     echo.
     echo ==================================================
-    echo ❌ COMPILATION FAILED!
+    echo COMPILATION FAILED!
     echo Please verify that a C/C++ compiler (e.g. MSVC or MinGW) is installed.
     echo ==================================================
 )
