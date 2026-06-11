@@ -8,3 +8,4 @@ verify_calculations.py
 .env
 banned_ips.json
 suggestions.json
+server/files/dev

@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 
 # --- Update Server Configuration ---
 UPDATE_SERVER_URL = "http://127.0.0.1:8400"
@@ -146,7 +146,7 @@ class UsageCalculator:
 
     def calculate_usage(self, feedwater_flow, aprm):
         feedwater_usage = self.feedwater_usage * feedwater_flow
-        condenser_usage = self.condenser_usage * 2 if self.unit == 2 else self.condenser_usage * feedwater_flow
+        condenser_usage = self.condenser_usage if self.unit == 2 else self.condenser_usage * feedwater_flow
         recirculation_usage = self.recirculation_usage * self.aprm_to_recirc_pump_speed(aprm) * 10
 
         total_usage = feedwater_usage + condenser_usage + self.condenser_circ_usage * 2 + recirculation_usage
@@ -170,13 +170,13 @@ class Calculator:
         if self.selected_unit == 1:
             return max(0.0, 82.8 + (13.7 * thermal) + (5.87 * 10**-3 * (thermal**2))) + 2
         else:
-            return max(0.0, 115 + (12.2 * thermal) + (9.27 * 10**-3 * (thermal**2))) + 2
+            return max(0.0, 160.0 + (11.6 * thermal) + (0.0249 * (thermal**2))) + 2
 
     def calc_gen_load(self, thermal):
         if self.selected_unit == 1:
             return max(0.0, -135 + (13 * thermal) + (5.33 * 10**-3 * (thermal**2)))
         else:
-            return max(0.0, -143 + (12.5 * thermal) - (2.06 * 10**-3 * (thermal**2)))
+            return max(0.0, -82.3 + (10.9 * thermal) + (0.0238 * (thermal**2)))
 
     def calc_thermal(self, demand):
         current_usage = self.usage
@@ -189,11 +189,11 @@ class Calculator:
                 else:
                     thermal = max(0.0, (-13 + math.sqrt(inner)) / 0.01066)
             else:
-                inner = 156.25 + 0.00824 * (demand + 143 + current_usage)
+                inner = 118.81 + 0.0952 * (82.3 + demand + current_usage)
                 if inner < 0:
                     thermal = 0.0
                 else:
-                    thermal = max(0.0, (-12.5 + math.sqrt(inner)) / 0.00412)
+                    thermal = max(0.0, (-10.9 + math.sqrt(inner)) / 0.0476)
             
             # Calculate dynamic usage for this thermal power
             flow = self.calc_flow(thermal)
@@ -387,9 +387,9 @@ class OverlayApp:
         title_bar.pack_propagate(False)
         self.make_draggable(title_bar)
 
-        title_lbl = tk.Label(title_bar, text=" [ APRM MONITOR // SYS OK ]", bg=BG_HEADER, fg=ACCENT_CYAN,
+        title_lbl = tk.Label(title_bar, text=f" [ APRM MONITOR v{__version__} // SYS OK ]", bg=BG_HEADER, fg=ACCENT_CYAN,
                              font=("Consolas", 9, "bold"))
-        title_lbl.pack(side="left", padx=10)
+        title_lbl.pack(side="left", padx=5)
         self.make_draggable(title_lbl)
 
         btn_close = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"))
@@ -499,6 +499,9 @@ class OverlayApp:
         self.btn_hud_scan_toggle.bind("<Button-1>", lambda e: self.toggle_hud_scan_setting())
         self.btn_hud_scan_toggle.bind("<Enter>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_HEADER))
         self.btn_hud_scan_toggle.bind("<Leave>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_MAIN))
+
+        lbl_ver = tk.Label(self.config_panel, text=f"Version: {__version__}", bg=BG_CARD, fg=TEXT_MUTED, font=("Segoe UI", 8))
+        lbl_ver.grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
 
 
@@ -1338,7 +1341,14 @@ class OverlayApp:
                             if latest_version != self.skipped_version:
                                 release_notes = data.get("notes", "No release details available.")
                                 filename = data.get("filename", f"rbwr_overlay_v{latest_version}.exe")
+                                log.info(f"Update check: New update {latest_version} is available.")
                                 self.root.after(0, lambda: self.show_update_dialog(latest_version, release_notes, filename))
+                            else:
+                                log.info(f"Update check: New update {latest_version} matches skipped version. Prompt suppressed.")
+                        else:
+                            log.info("Update check: Application is up to date.")
+                    else:
+                        log.warning(f"Update check: Unexpected response status from server: {response.status}")
             except Exception as e:
                 log.info(f"Update check skipped/failed (server offline): {e}")
                 
