@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.5.2"
+__version__ = "1.5.3"
 
 # --- Update Server Configuration ---
 UPDATE_SERVER_URL = "https://rbwr.hotment.dev"
@@ -1120,6 +1120,16 @@ class OverlayApp:
             return False
         
         try:
+            def clean_demand_string(val_str: str) -> str:
+                if val_str and not val_str.endswith('0'):
+                    r_index = val_str.rfind('0')
+                    if r_index != -1:
+                        val_str = val_str[:r_index + 1]
+                if val_str and val_str.endswith('0') and len(val_str) > 4:
+                    val_str = val_str[:-1]
+                    val_str = clean_demand_string(val_str)
+                return val_str
+
             import numpy as np
             img_np = np.array(img.convert('RGB'))
             result, _ = engine(img_np)
@@ -1153,16 +1163,16 @@ class OverlayApp:
                             detected_unit = 1
                         elif dem_unit_char in ('2', 'z', 's'):
                             detected_unit = 2
-                        detected_demand = float(demand_match.group(2))
+                        detected_demand = float(clean_demand_string(demand_match.group(2)))
                 else:
-                    detected_demand = float(val_str)
+                    detected_demand = float(clean_demand_string(val_str))
             elif demand_match:
                 unit_char = demand_match.group(1).lower()
                 if unit_char in ('1', 'l', 'i', '|'):
                     detected_unit = 1
                 elif unit_char in ('2', 'z', 's'):
                     detected_unit = 2
-                detected_demand = float(demand_match.group(2))
+                detected_demand = float(clean_demand_string(demand_match.group(2)))
 
             # Scan the rest of the text for a general unit indicator if not found via HUD demand labels
             if detected_unit is None:
@@ -1185,8 +1195,8 @@ class OverlayApp:
 
             match_net = re.search(r'(?i)Network\s*dem[a-z0-9]*\s*[:\s]+(\d+)(?:\s*\(\s*(\d+)\s*\))?', full_text)
             if match_net:
-                val1 = float(match_net.group(1))
-                val2 = float(match_net.group(2)) if match_net.group(2) else None
+                val1 = float(clean_demand_string(match_net.group(1)))
+                val2 = float(clean_demand_string(match_net.group(2))) if match_net.group(2) else None
                 
                 active_unit = detected_unit if detected_unit is not None else self.calc.selected_unit
                 if active_unit == 1:
@@ -1206,14 +1216,14 @@ class OverlayApp:
 
             match_fallback = re.search(r'(?i)Demand(\d+)', cleaned)
             if match_fallback:
-                detected_demand = float(match_fallback.group(1))
+                detected_demand = float(clean_demand_string(match_fallback.group(1)))
                 self.log_diag(f"Matched Fallback: D({detected_demand}) (Unit: {detected_unit})", "success")
                 self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True
 
             match_generic = re.search(r'(?i)(?:demand|load|dem)[A-Za-z]*(\d+)', cleaned)
             if match_generic:
-                detected_demand = float(match_generic.group(1))
+                detected_demand = float(clean_demand_string(match_generic.group(1)))
                 self.log_diag(f"Matched Generic: D({detected_demand}) (Unit: {detected_unit})", "success")
                 self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True

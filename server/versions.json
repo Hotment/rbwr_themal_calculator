@@ -36,6 +36,12 @@
             "filename": "rbwr_overlay_v1.5.2.exe",
             "release_date": "2026-06-12",
             "notes": "Updated suggestions server url and updated python to 3.14."
+        },
+        "1.5.3": {
+            "version": "1.5.3",
+            "filename": "rbwr_overlay_v1.5.3.exe",
+            "release_date": "2026-06-12",
+            "notes": "Updated ocr engine to fix for bad demands."
         }
     }
 }
