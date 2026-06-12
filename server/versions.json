@@ -42,6 +42,12 @@
             "filename": "rbwr_overlay_v1.5.3.exe",
             "release_date": "2026-06-12",
             "notes": "Updated ocr engine to fix for bad demands."
+        },
+        "1.5.4": {
+            "version": "1.5.4",
+            "filename": "rbwr_overlay_v1.5.3.exe",
+            "release_date": "2026-06-12",
+            "notes": "Patch - Fixed app not checking for updates."
         }
     }
 }
