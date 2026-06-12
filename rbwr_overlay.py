@@ -8,14 +8,11 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.5.4"
+__version__ = "1.5.5"
 
 # --- Update Server Configuration ---
-UPDATE_SERVER_URL = "https://rbwr.hotment.dev"
+SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
 UPDATE_HTTP_HEADERS = {'User-Agent': 'Mozilla/5.0'}
-
-BASE64_ICON_PNG = "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(rest of string omitted for brevity)"
-
 
 try:
     __compiled__  # pyright: ignore[reportUndefinedVariable, reportUnusedExpression]
@@ -281,17 +278,9 @@ class OverlayApp:
             try:
                 self.root.iconbitmap("icon.ico")
             except Exception:
-                try:
-                    self.icon_image_tk = tk.PhotoImage(data=BASE64_ICON_PNG)
-                    self.root.wm_iconphoto(True, self.icon_image_tk)
-                except Exception:
-                    pass
+                log.warning("Failed to load custom icon from icon.ico")
         else:
-            try:
-                self.icon_image_tk = tk.PhotoImage(data=BASE64_ICON_PNG)
-                self.root.wm_iconphoto(True, self.icon_image_tk)
-            except Exception:
-                pass
+            log.warning("Failed to load custom icon from icon.ico")
                 
         self.setup_tray_icon()
         
@@ -1347,30 +1336,41 @@ class OverlayApp:
             try:
                 threading.Event().wait(1.5)
                 
-                url = f"{UPDATE_SERVER_URL}/version/latest"
+                url = "https://api.github.com/repos/Hotment/rbwr_themal_calculator/releases/latest"
                 req = urllib.request.Request(url, headers=UPDATE_HTTP_HEADERS)
-                with urllib.request.urlopen(req, timeout=3) as response:
+                with urllib.request.urlopen(req, timeout=5) as response:
                     if response.status == 200:
                         data = json.loads(response.read().decode('utf-8'))
-                        latest_version = data.get("version")
+                        tag_name = data.get("tag_name", "")
+                        latest_version = tag_name.lstrip('vV')
                         if latest_version and latest_version != __version__:
                             if latest_version != self.skipped_version:
-                                release_notes = data.get("notes", "No release details available.")
-                                filename = data.get("filename", f"rbwr_overlay_v{latest_version}.exe")
-                                log.info(f"Update check: New update {latest_version} is available.")
-                                self.root.after(0, lambda: self.show_update_dialog(latest_version, release_notes, filename))
+                                release_notes = data.get("body", "No release details available.")
+                                download_url = None
+                                filename = f"rbwr_overlay_v{latest_version}.exe"
+                                for asset in data.get("assets", []):
+                                    if asset.get("name", "").endswith(".exe"):
+                                        filename = asset.get("name")
+                                        download_url = asset.get("browser_download_url")
+                                        break
+                                
+                                if download_url:
+                                    log.info(f"Update check: New update {latest_version} is available.")
+                                    self.root.after(0, lambda: self.show_update_dialog(latest_version, release_notes, filename, download_url))
+                                else:
+                                    log.warning("Update check: Found update but no .exe asset in the release.")
                             else:
                                 log.info(f"Update check: New update {latest_version} matches skipped version. Prompt suppressed.")
                         else:
                             log.info("Update check: Application is up to date.")
                     else:
-                        log.warning(f"Update check: Unexpected response status from server: {response.status}")
+                        log.warning(f"Update check: Unexpected response status from GitHub: {response.status}")
             except Exception as e:
-                log.info(f"Update check skipped/failed (server offline): {e}")
+                log.info(f"Update check skipped/failed (GitHub API offline/error): {e}")
                 
         threading.Thread(target=run_check, daemon=True).start()
 
-    def show_update_dialog(self, latest_version, release_notes, download_filename):
+    def show_update_dialog(self, latest_version, release_notes, download_filename, download_url):
         popup = tk.Toplevel(self.root)
         popup.title("Update Available")
         popup.geometry("380x260")
@@ -1405,7 +1405,7 @@ class OverlayApp:
         
         def start_update():
             popup.destroy()
-            self.execute_self_update(latest_version, download_filename)
+            self.execute_self_update(latest_version, download_filename, download_url)
             
         def skip_version():
             popup.destroy()
@@ -1569,7 +1569,7 @@ class OverlayApp:
                 try:
                     data_bytes = json.dumps(payload).encode('utf-8')
                     req = urllib.request.Request(
-                        f"{UPDATE_SERVER_URL}/suggestions",
+                        f"{SUGGESTIONS_SERVER_URL}/suggestions",
                         data=data_bytes,
                         headers={
                             "Content-Type": "application/json",
@@ -1629,7 +1629,7 @@ class OverlayApp:
         btn_cancel.bind("<Enter>", lambda e: btn_cancel.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
 
-    def execute_self_update(self, latest_version, download_filename):
+    def execute_self_update(self, latest_version, download_filename, download_url):
         loading = tk.Toplevel(self.root)
         loading.title("Downloading Update")
         loading.geometry("300x120")
@@ -1658,7 +1658,7 @@ class OverlayApp:
                 exe_dir = os.path.dirname(os.path.abspath(current_exe))
                 new_exe_path = os.path.join(exe_dir, download_filename)
                 
-                url = f"{UPDATE_SERVER_URL}/download/{latest_version}"
+                url = download_url
                 req = urllib.request.Request(url, headers=UPDATE_HTTP_HEADERS)
                 
                 with urllib.request.urlopen(req, timeout=30) as response:
