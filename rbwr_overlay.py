@@ -1392,22 +1392,11 @@ class OverlayApp:
         settings_win.overrideredirect(True)
         settings_win.attributes("-topmost", True)
 
-        # Center relative to root window and snap inside screen bounds
+        # Center relative to root window
         w = 380
         h = 420
         x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
-
-        screen_w = settings_win.winfo_screenwidth()
-        screen_h = settings_win.winfo_screenheight()
-        if x < 0:
-            x = 0
-        elif x + w > screen_w:
-            x = screen_w - w
-        if y < 0:
-            y = 0
-        elif y + h > screen_h:
-            y = screen_h - h
 
         settings_win.geometry(f"{w}x{h}+{x}+{y}")
 
@@ -1421,16 +1410,6 @@ class OverlayApp:
             dy = event.y - drag_data["y"]
             px = settings_win.winfo_x() + dx
             py = settings_win.winfo_y() + dy
-
-            # Snap/Constrain settings window within screen boundaries
-            if px < 0:
-                px = 0
-            elif px + w > screen_w:
-                px = screen_w - w
-            if py < 0:
-                py = 0
-            elif py + h > screen_h:
-                py = screen_h - h
 
             settings_win.geometry(f"+{px}+{py}")
 
@@ -1791,23 +1770,12 @@ class OverlayApp:
         popup.overrideredirect(True)
         popup.attributes("-topmost", True)
         
-        # Center relative to root window and snap inside screen bounds
+        # Center relative to root window
         w = 380
         h = 260
         x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         
-        screen_w = popup.winfo_screenwidth()
-        screen_h = popup.winfo_screenheight()
-        if x < 0:
-            x = 0
-        elif x + w > screen_w:
-            x = screen_w - w
-        if y < 0:
-            y = 0
-        elif y + h > screen_h:
-            y = screen_h - h
-            
         popup.geometry(f"{w}x{h}+{x}+{y}")
         
         drag_data = {"x": 0, "y": 0}
@@ -1820,16 +1788,6 @@ class OverlayApp:
             dy = event.y - drag_data["y"]
             px = popup.winfo_x() + dx
             py = popup.winfo_y() + dy
-
-            # Snap/Constrain within screen boundaries
-            if px < 0:
-                px = 0
-            elif px + w > screen_w:
-                px = screen_w - w
-            if py < 0:
-                py = 0
-            elif py + h > screen_h:
-                py = screen_h - h
 
             popup.geometry(f"+{px}+{py}")
             
@@ -1921,23 +1879,12 @@ class OverlayApp:
         popup.overrideredirect(True)
         popup.attributes("-topmost", True)
         
-        # Center relative to root window and snap inside screen bounds
+        # Center relative to root window
         w = 380
         h = 370
         x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         
-        screen_w = popup.winfo_screenwidth()
-        screen_h = popup.winfo_screenheight()
-        if x < 0:
-            x = 0
-        elif x + w > screen_w:
-            x = screen_w - w
-        if y < 0:
-            y = 0
-        elif y + h > screen_h:
-            y = screen_h - h
-            
         popup.geometry(f"{w}x{h}+{x}+{y}")
         
         drag_data = {"x": 0, "y": 0}
@@ -1950,16 +1897,6 @@ class OverlayApp:
             dy = event.y - drag_data["y"]
             px = popup.winfo_x() + dx
             py = popup.winfo_y() + dy
-
-            # Snap/Constrain within screen boundaries
-            if px < 0:
-                px = 0
-            elif px + w > screen_w:
-                px = screen_w - w
-            if py < 0:
-                py = 0
-            elif py + h > screen_h:
-                py = screen_h - h
 
             popup.geometry(f"+{px}+{py}")
             
@@ -2152,23 +2089,12 @@ class OverlayApp:
         loading.overrideredirect(True)
         loading.attributes("-topmost", True)
         
-        # Center relative to root window and snap inside screen bounds
+        # Center relative to root window
         w = 300
         h = 120
         x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         
-        screen_w = loading.winfo_screenwidth()
-        screen_h = loading.winfo_screenheight()
-        if x < 0:
-            x = 0
-        elif x + w > screen_w:
-            x = screen_w - w
-        if y < 0:
-            y = 0
-        elif y + h > screen_h:
-            y = screen_h - h
-            
         loading.geometry(f"{w}x{h}+{x}+{y}")
         
         drag_data = {"x": 0, "y": 0}
@@ -2181,16 +2107,6 @@ class OverlayApp:
             dy = event.y - drag_data["y"]
             px = loading.winfo_x() + dx
             py = loading.winfo_y() + dy
-
-            # Snap/Constrain within screen boundaries
-            if px < 0:
-                px = 0
-            elif px + w > screen_w:
-                px = screen_w - w
-            if py < 0:
-                py = 0
-            elif py + h > screen_h:
-                py = screen_h - h
 
             loading.geometry(f"+{px}+{py}")
             
