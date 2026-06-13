@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.5.5"
+__version__ = "1.5.6"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -34,6 +34,98 @@ logging.basicConfig(
 logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.getLogger("onnxruntime").setLevel(logging.WARNING)
 log = logging.getLogger("rbwr")
+
+def show_crash_dialog(tb_text):
+    try:
+        crash_win = tk.Tk()
+        crash_win.title("Application Crash Detected")
+        crash_win.geometry("560x380")
+        crash_win.configure(bg="#07080a")
+        crash_win.attributes("-topmost", True)
+        
+        # Center the window
+        screen_width = crash_win.winfo_screenwidth()
+        screen_height = crash_win.winfo_screenheight()
+        x = (screen_width - 560) // 2
+        y = (screen_height - 380) // 2
+        crash_win.geometry(f"560x380+{x}+{y}")
+        
+        lbl_header = tk.Label(crash_win, text="CRITICAL EXCEPTION ENCOUNTERED", bg="#07080a", fg="#ff003c", font=("Segoe UI", 11, "bold"))
+        lbl_header.pack(pady=(15, 5))
+        
+        lbl_sub = tk.Label(crash_win, text="The application has crashed. A detailed crash log was saved to the log file.\nPlease copy the traceback below to report this issue.", 
+                           bg="#07080a", fg="#6c7d93", font=("Segoe UI", 8), justify="center", wraplength=520)
+        lbl_sub.pack(pady=(0, 10))
+        
+        txt_frame = tk.Frame(crash_win, bg="#11141a", bd=1, relief="solid")
+        txt_frame.pack(fill="both", expand=True, padx=20, pady=5)
+        
+        txt_tb = tk.Text(txt_frame, bg="#11141a", fg="#ffffff", insertbackground="#ffffff", font=("Consolas", 8), bd=0, wrap="none")
+        txt_tb.insert("1.0", tb_text)
+        txt_tb.config(state="disabled")
+        txt_tb.pack(side="left", fill="both", expand=True)
+        
+        scroll_y = tk.Scrollbar(txt_frame, command=txt_tb.yview)
+        scroll_y.pack(side="right", fill="y")
+        txt_tb.config(yscrollcommand=scroll_y.set)
+        
+        btn_frame = tk.Frame(crash_win, bg="#07080a")
+        btn_frame.pack(fill="x", pady=15, padx=20)
+        
+        def copy_to_clipboard():
+            crash_win.clipboard_clear()
+            crash_win.clipboard_append(tb_text)
+            btn_copy.config(text="Copied!", fg="#39ff14")
+            
+        def open_github():
+            import urllib.parse
+            import webbrowser
+            body_param = urllib.parse.quote(f"Please describe what you were doing when the crash occurred:\n\n```\n{tb_text}```")
+            webbrowser.open(f"https://github.com/Hotment/rbwr_themal_calculator/issues/new?body={body_param}")
+            
+        def close_app():
+            crash_win.destroy()
+            os._exit(1)
+            
+        btn_copy = tk.Label(btn_frame, text="Copy Traceback", bg="#11141a", fg="#00f0ff", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
+        btn_copy.pack(side="left", padx=3)
+        btn_copy.bind("<Button-1>", lambda e: copy_to_clipboard())
+        
+        btn_issue = tk.Label(btn_frame, text="Report on GitHub", bg="#11141a", fg="#ffaa00", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
+        btn_issue.pack(side="left", padx=3)
+        btn_issue.bind("<Button-1>", lambda e: open_github())
+        
+        btn_dismiss = tk.Label(btn_frame, text="Continue", bg="#11141a", fg="#39ff14", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
+        btn_dismiss.pack(side="right", padx=3)
+        btn_dismiss.bind("<Button-1>", lambda e: crash_win.destroy())
+
+        btn_close = tk.Label(btn_frame, text="Exit App", bg="#11141a", fg="#ff003c", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
+        btn_close.pack(side="right", padx=3)
+        btn_close.bind("<Button-1>", lambda e: close_app())
+        
+        crash_win.protocol("WM_DELETE_WINDOW", close_app)
+        crash_win.mainloop()
+    except Exception:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, f"Critical Crash:\n{tb_text}", "RBWR Overlay Crash", 0x10)
+        os._exit(1)
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    tb_text = "".join(tb_lines)
+    log.critical("Unhandled exception captured:\n" + tb_text)
+    show_crash_dialog(tb_text)
+
+def handle_thread_exception(args):
+    handle_exception(args.exc_type, args.exc_value, args.exc_traceback)
+
+sys.excepthook = handle_exception
+threading.excepthook = handle_thread_exception
+tk.Tk.report_callback_exception = lambda self, exc_type, exc_value, exc_traceback: handle_exception(exc_type, exc_value, exc_traceback)  # pyright: ignore[reportAttributeAccessIssue]
+
 log.info(f"=== RBWR APR Overlay v{__version__} starting ===")
 log.info(f"Version: {__version__}")
 log.info(f"Python: {sys.version}")
@@ -146,10 +238,12 @@ class UsageCalculator:
                 return APRMtoRecircTable[aprm_value]
         return APRMtoRecircTable[max(APRMtoRecircTable.keys())]
 
-    def calculate_usage(self, feedwater_flow, aprm):
+    def calculate_usage(self, feedwater_flow, aprm, override_speed=None):
         feedwater_usage = self.feedwater_usage * feedwater_flow
         condenser_usage = self.condenser_usage if self.unit == 2 else self.condenser_usage * feedwater_flow
-        recirculation_usage = self.recirculation_usage * self.aprm_to_recirc_pump_speed(aprm) * 10
+        
+        speed = override_speed if override_speed is not None else self.aprm_to_recirc_pump_speed(aprm)
+        recirculation_usage = self.recirculation_usage * speed * 10
 
         total_usage = feedwater_usage + condenser_usage + self.condenser_circ_usage * 2 + recirculation_usage
         return round(total_usage, 2)
@@ -160,6 +254,7 @@ class Calculator:
         self.selected_unit = 1
         self.usage_calc1 = UsageCalculator(1)
         self.usage_calc2 = UsageCalculator(2)
+        self.recirc_override: float|None = None
 
     def set_usage(self, val_str):
         try:
@@ -200,7 +295,7 @@ class Calculator:
             # Calculate dynamic usage for this thermal power
             flow = self.calc_flow(thermal)
             u_calc = self.usage_calc1 if self.selected_unit == 1 else self.usage_calc2
-            current_usage = u_calc.calculate_usage(flow, thermal)
+            current_usage = u_calc.calculate_usage(flow, thermal, override_speed=self.recirc_override)
         
         self.usage = current_usage
         return thermal
@@ -262,9 +357,12 @@ class OverlayApp:
         self.var_demand.trace_add("write", lambda name, index, mode: self.on_input_update("demand"))
         self.var_rtp.trace_add("write", lambda name, index, mode: self.on_input_update("rtp"))
         self.var_hud_scan = tk.BooleanVar(value=settings.get("enable_hud_scan", True))
+        self.var_topmost_on_roblox = tk.BooleanVar(value=settings.get("topmost_on_roblox", True))
         self.var_compact_menu = tk.BooleanVar(value=self.is_compact)
         self.var_topmost_menu = tk.BooleanVar(value=self.is_topmost)
         self.skipped_version = settings.get("skipped_version", "")
+        self.var_recirc_override = tk.StringVar(value="")
+        self.var_recirc_override.trace_add("write", lambda *args: self.on_recirc_override_change())
         
         self.var_hotkey = tk.StringVar(value=settings["hotkey"])
         self.var_hotkey.trace_add("write", lambda *args: self.start_hotkey_listener())
@@ -289,6 +387,7 @@ class OverlayApp:
                                     bd=1, relief="solid", font=("Segoe UI", 9))
         self.context_menu.add_checkbutton(label="Compact Mode", variable=self.var_compact_menu, command=self.toggle_compact)
         self.context_menu.add_checkbutton(label="Always on Top", variable=self.var_topmost_menu, command=self.toggle_topmost)
+        self.context_menu.add_checkbutton(label="Topmost on Roblox", variable=self.var_topmost_on_roblox, command=self.save_settings)
         self.context_menu.add_checkbutton(label="Scan HUD First", variable=self.var_hud_scan, command=self.on_hud_scan_menu_toggle)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="Exit Application", command=self.quit_app)
@@ -303,6 +402,7 @@ class OverlayApp:
         self.update_calculations(source="demand")
         
         self.check_for_updates()
+        self.check_focus_loop()
 
     def center_window(self, w, h):
         screen_width = self.root.winfo_screenwidth()
@@ -455,47 +555,81 @@ class OverlayApp:
                                   bd=0, highlightthickness=0, width=10, justify="center", state="readonly")
         self.ent_usage.grid(row=0, column=1, sticky="e", padx=10, pady=4)
 
+        lbl_usage_note = tk.Label(self.config_panel, text="Use Recirc Speed Override if Site Usage is off by a lot (10-15 MW off)", 
+                                  bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 7, "italic"), justify="left")
+        lbl_usage_note.grid(row=1, column=0, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 4))
+
         lbl_opacity = tk.Label(self.config_panel, text="Overlay Opacity:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_opacity.grid(row=1, column=0, sticky="w", pady=4)
+        lbl_opacity.grid(row=2, column=0, sticky="w", pady=4)
 
         self.slider_opacity = ttk.Scale(self.config_panel, from_=0.3, to=1.0, value=self.root.attributes("-alpha"),
                                          orient="horizontal", command=self.on_opacity_change)
-        self.slider_opacity.grid(row=1, column=1, sticky="we", padx=10, pady=4)
+        self.slider_opacity.grid(row=2, column=1, sticky="we", padx=10, pady=4)
 
         lbl_hotkey = tk.Label(self.config_panel, text="Scan Hotkey:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_hotkey.grid(row=2, column=0, sticky="w", pady=4)
+        lbl_hotkey.grid(row=3, column=0, sticky="w", pady=4)
 
         self.btn_hotkey_bind = tk.Label(self.config_panel, text=self.var_hotkey.get(), bg=BG_MAIN, fg=ACCENT_CYAN,
                                         font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_hotkey_bind.grid(row=2, column=1, sticky="e", padx=10, pady=4)
+        self.btn_hotkey_bind.grid(row=3, column=1, sticky="e", padx=10, pady=4)
         self.btn_hotkey_bind.bind("<Button-1>", lambda e: self.listen_for_hotkey())
         self.btn_hotkey_bind.bind("<Enter>", lambda e: self.btn_hotkey_bind.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         self.btn_hotkey_bind.bind("<Leave>", lambda e: self.btn_hotkey_bind.config(bg=BG_MAIN, fg=ACCENT_CYAN if self.btn_hotkey_bind.cget("text") != "[ PRESS KEY... ]" else ACCENT_GOLD))
 
         lbl_log = tk.Label(self.config_panel, text="Diagnostics:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_log.grid(row=3, column=0, sticky="w", pady=4)
+        lbl_log.grid(row=4, column=0, sticky="w", pady=4)
 
         self.btn_open_log = tk.Label(self.config_panel, text="📄 Open Log", bg=BG_MAIN, fg=ACCENT_CYAN,
                                       font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_open_log.grid(row=3, column=1, sticky="e", padx=10, pady=4)
+        self.btn_open_log.grid(row=4, column=1, sticky="e", padx=10, pady=4)
         self.btn_open_log.bind("<Button-1>", lambda e: self.open_log_file())
         self.btn_open_log.bind("<Enter>", lambda e: self.btn_open_log.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         self.btn_open_log.bind("<Leave>", lambda e: self.btn_open_log.config(bg=BG_MAIN, fg=ACCENT_CYAN))
 
         lbl_hud_scan = tk.Label(self.config_panel, text="Scan HUD first:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_hud_scan.grid(row=4, column=0, sticky="w", pady=4)
+        lbl_hud_scan.grid(row=5, column=0, sticky="w", pady=4)
 
         hud_status = "🟢 ENABLED" if self.var_hud_scan.get() else "🔴 DISABLED"
         hud_color = ACCENT_GREEN if self.var_hud_scan.get() else ACCENT_RED
         self.btn_hud_scan_toggle = tk.Label(self.config_panel, text=hud_status, bg=BG_MAIN, fg=hud_color,
                                             font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_hud_scan_toggle.grid(row=4, column=1, sticky="e", padx=10, pady=4)
+        self.btn_hud_scan_toggle.grid(row=5, column=1, sticky="e", padx=10, pady=4)
         self.btn_hud_scan_toggle.bind("<Button-1>", lambda e: self.toggle_hud_scan_setting())
         self.btn_hud_scan_toggle.bind("<Enter>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_HEADER))
         self.btn_hud_scan_toggle.bind("<Leave>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_MAIN))
 
+        lbl_roblox_topmost = tk.Label(self.config_panel, text="Topmost on Roblox:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_roblox_topmost.grid(row=6, column=0, sticky="w", pady=4)
+
+        roblox_topmost_status = "🟢 ENABLED" if self.var_topmost_on_roblox.get() else "🔴 DISABLED"
+        roblox_topmost_color = ACCENT_GREEN if self.var_topmost_on_roblox.get() else ACCENT_RED
+        self.btn_roblox_topmost_toggle = tk.Label(self.config_panel, text=roblox_topmost_status, bg=BG_MAIN, fg=roblox_topmost_color,
+                                                  font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        self.btn_roblox_topmost_toggle.grid(row=6, column=1, sticky="e", padx=10, pady=4)
+        self.btn_roblox_topmost_toggle.bind("<Button-1>", lambda e: self.toggle_roblox_topmost_setting())
+        self.btn_roblox_topmost_toggle.bind("<Enter>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_HEADER))
+        self.btn_roblox_topmost_toggle.bind("<Leave>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_MAIN))
+
+        lbl_recirc = tk.Label(self.config_panel, text="Recirc Override (%):", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_recirc.grid(row=7, column=0, sticky="w", pady=4)
+
+        recirc_frame = tk.Frame(self.config_panel, bg=BG_CARD)
+        recirc_frame.grid(row=7, column=1, sticky="e", padx=10, pady=4)
+
+        self.ent_recirc = tk.Entry(recirc_frame, textvariable=self.var_recirc_override, bg=BG_MAIN, fg=ACCENT_CYAN,
+                                   insertbackground=TEXT_LIGHT, font=("Consolas", 9, "bold"), bd=1, relief="solid",
+                                   width=6, justify="center")
+        self.ent_recirc.pack(side="left", padx=(0, 5))
+
+        btn_recirc_reset = tk.Label(recirc_frame, text="Reset", bg=BG_MAIN, fg=TEXT_MUTED,
+                                    font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=8, pady=2, cursor="hand2")
+        btn_recirc_reset.pack(side="left")
+        btn_recirc_reset.bind("<Button-1>", lambda e: self.reset_recirc_override())
+        btn_recirc_reset.bind("<Enter>", lambda e: btn_recirc_reset.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_recirc_reset.bind("<Leave>", lambda e: btn_recirc_reset.config(bg=BG_MAIN, fg=TEXT_MUTED))
+
         lbl_ver = tk.Label(self.config_panel, text=f"Version: {__version__}", bg=BG_CARD, fg=TEXT_MUTED, font=("Segoe UI", 8))
-        lbl_ver.grid(row=5, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        lbl_ver.grid(row=8, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
 
 
@@ -716,6 +850,7 @@ class OverlayApp:
                 pystray.MenuItem("Show / Restore", lambda icon, item: self.restore_window(), default=True),
                 pystray.MenuItem("Compact Mode", lambda icon, item: self.toggle_compact(), checked=lambda item: self.is_compact),
                 pystray.MenuItem("Always on Top", lambda icon, item: self.toggle_topmost(), checked=lambda item: self.is_topmost),
+                pystray.MenuItem("Topmost on Roblox", lambda icon, item: self.toggle_topmost_on_roblox(), checked=lambda item: self.var_topmost_on_roblox.get()),
                 pystray.MenuItem("Scan HUD First", lambda icon, item: self.toggle_hud_scan_setting(), checked=lambda item: self.var_hud_scan.get()),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", lambda icon, item: self.quit_app())
@@ -735,6 +870,7 @@ class OverlayApp:
             "is_compact": False,
             "is_topmost": True,
             "enable_hud_scan": True,
+            "topmost_on_roblox": True,
             "skipped_version": ""
         }
         try:
@@ -756,6 +892,7 @@ class OverlayApp:
                 "is_compact": self.is_compact,
                 "is_topmost": self.is_topmost,
                 "enable_hud_scan": self.var_hud_scan.get(),
+                "topmost_on_roblox": self.var_topmost_on_roblox.get(),
                 "skipped_version": getattr(self, 'skipped_version', "")
             }
             with open(CONFIG_FILE, "w") as f:
@@ -1282,7 +1419,7 @@ class OverlayApp:
         arrow = "▼" if self.show_config else "▲"
         self.lbl_config_toggle.config(text=f"⚙ Configuration Settings {arrow}")
         
-        target_h = 420 + (160 if self.show_config else 0)
+        target_h = 420 + (220 if self.show_config else 0)
         self.root.geometry(f"{self.width_detailed}x{target_h}")
         self.create_widgets()
         self.update_calculations(source="demand")
@@ -1324,6 +1461,92 @@ class OverlayApp:
                 self.tray.update_menu()
             except Exception:
                 pass
+
+    def on_recirc_override_change(self):
+        val_str = self.var_recirc_override.get().strip()
+        if not val_str:
+            self.calc.recirc_override = None
+        else:
+            try:
+                val = float(val_str)
+                self.calc.recirc_override = max(0.0, min(110.0, val))
+            except ValueError:
+                pass
+        self.update_calculations(source="demand")
+
+    def reset_recirc_override(self):
+        self.var_recirc_override.set("")
+        self.calc.recirc_override = None
+        self.update_calculations(source="demand")
+
+    def toggle_topmost_on_roblox(self):
+        new_val = not self.var_topmost_on_roblox.get()
+        self.var_topmost_on_roblox.set(new_val)
+        self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
+
+    def toggle_roblox_topmost_setting(self):
+        new_val = not self.var_topmost_on_roblox.get()
+        self.var_topmost_on_roblox.set(new_val)
+        if hasattr(self, 'btn_roblox_topmost_toggle') and self.btn_roblox_topmost_toggle.winfo_exists():
+            self.btn_roblox_topmost_toggle.config(text="🟢 ENABLED" if new_val else "🔴 DISABLED",
+                                                  fg=ACCENT_GREEN if new_val else ACCENT_RED)
+        self.save_settings()
+        if hasattr(self, 'tray') and self.tray:
+            try:
+                self.tray.update_menu()
+            except Exception:
+                pass
+
+    def update_topmost_state(self):
+        try:
+            # If standard topmost is enabled, it's always topmost
+            if self.is_topmost:
+                if not self.root.attributes("-topmost"):
+                    self.root.attributes("-topmost", True)
+                return
+
+            # If topmost on Roblox is enabled
+            if self.var_topmost_on_roblox.get():
+                hwnd = ctypes.windll.user32.GetForegroundWindow()
+                if hwnd:
+                    # Get focused window title
+                    buffer_len = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
+                    buffer = ctypes.create_unicode_buffer(buffer_len)
+                    ctypes.windll.user32.GetWindowTextW(hwnd, buffer, buffer_len)
+                    window_title = buffer.value
+                    
+                    # Get PID of active window to compare with ours
+                    import os
+                    active_pid = wintypes.DWORD()
+                    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(active_pid))
+                    
+                    is_roblox = "Roblox" in window_title or "Realistic" in window_title
+                    is_ours = (active_pid.value == os.getpid())
+                    
+                    if is_roblox or is_ours:
+                        if not self.root.attributes("-topmost"):
+                            self.root.attributes("-topmost", True)
+                    else:
+                        if self.root.attributes("-topmost"):
+                            self.root.attributes("-topmost", False)
+                else:
+                    if self.root.attributes("-topmost"):
+                        self.root.attributes("-topmost", False)
+            else:
+                # If both are False, ensure topmost is False
+                if self.root.attributes("-topmost"):
+                    self.root.attributes("-topmost", False)
+        except Exception:
+            pass
+
+    def check_focus_loop(self):
+        self.update_topmost_state()
+        self.root.after(300, self.check_focus_loop)
 
     def check_for_updates(self):
         if not _is_compiled:
@@ -1733,7 +1956,7 @@ class OverlayApp:
                     
                     # Update dynamic usage
                     u_calc = self.calc.usage_calc1 if self.calc.selected_unit == 1 else self.calc.usage_calc2
-                    self.calc.usage = u_calc.calculate_usage(flow, thermal_val)
+                    self.calc.usage = u_calc.calculate_usage(flow, thermal_val, override_speed=self.calc.recirc_override)
                     
                     demand = round(gen_load - self.calc.usage, 2)
                     if demand < 0:
