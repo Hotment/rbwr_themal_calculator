@@ -1394,7 +1394,7 @@ class OverlayApp:
 
         # Center relative to root window
         w = 380
-        h = 420
+        h = 435
         x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
 
@@ -1517,6 +1517,10 @@ class OverlayApp:
                                    insertbackground=TEXT_LIGHT, font=("Consolas", 9, "bold"), bd=1, relief="solid",
                                    width=6, justify="center")
         self.ent_recirc.pack(side="left", padx=(0, 5))
+        self.ent_recirc.bind("<Button-1>", lambda e: self.ent_recirc.focus_force())
+        
+        settings_win.bind("<Button-1>", lambda e: settings_win.focus_force() if not isinstance(e.widget, (tk.Entry, tk.Text)) else None)
+        content_frame.bind("<Button-1>", lambda e: settings_win.focus_force() if not isinstance(e.widget, (tk.Entry, tk.Text)) else None)
 
         btn_recirc_reset = tk.Label(recirc_frame, text="Reset", bg=BG_MAIN, fg=TEXT_MUTED,
                                     font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=8, pady=2, cursor="hand2")
@@ -1525,20 +1529,24 @@ class OverlayApp:
         btn_recirc_reset.bind("<Enter>", lambda e: btn_recirc_reset.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_recirc_reset.bind("<Leave>", lambda e: btn_recirc_reset.config(bg=BG_MAIN, fg=TEXT_MUTED))
 
+        lbl_recirc_note = tk.Label(content_frame, text="Used for calculating site usage", 
+                                   bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 7, "italic"), justify="left")
+        lbl_recirc_note.grid(row=8, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 4))
+
 
         lbl_feedback = tk.Label(content_frame, text="Feedback & Help:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_feedback.grid(row=8, column=0, sticky="w", pady=4)
+        lbl_feedback.grid(row=9, column=0, sticky="w", pady=4)
 
         btn_feedback_settings = tk.Label(content_frame, text="💬 Feedback", bg=BG_MAIN, fg=ACCENT_CYAN,
                                       font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        btn_feedback_settings.grid(row=8, column=1, sticky="e", padx=10, pady=4)
+        btn_feedback_settings.grid(row=9, column=1, sticky="e", padx=10, pady=4)
         btn_feedback_settings.bind("<Button-1>", lambda e: self.open_suggestions_dialog())
         btn_feedback_settings.bind("<Enter>", lambda e: btn_feedback_settings.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_feedback_settings.bind("<Leave>", lambda e: btn_feedback_settings.config(bg=BG_MAIN, fg=ACCENT_CYAN))
 
 
         lbl_ver = tk.Label(content_frame, text=f"Version: {__version__}", bg=BG_CARD, fg=TEXT_MUTED, font=("Segoe UI", 8))
-        lbl_ver.grid(row=9, column=0, columnspan=2, sticky="w", pady=(12, 0))
+        lbl_ver.grid(row=10, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
         def on_settings_destroy(event):
             if event.widget == settings_win:
@@ -1546,6 +1554,7 @@ class OverlayApp:
                 self.update_topmost_state()
 
         settings_win.bind("<Destroy>", on_settings_destroy)
+        settings_win.focus_force()
 
     def on_usage_change(self, *args):
         self.calc.set_usage(self.var_usage.get())
@@ -1592,7 +1601,10 @@ class OverlayApp:
         else:
             try:
                 val = float(val_str)
-                self.calc.recirc_override = max(0.0, min(110.0, val))
+                if val > 100.0:
+                    self.var_recirc_override.set("100")
+                    val = 100.0
+                self.calc.recirc_override = max(0.0, val)
             except ValueError:
                 pass
         self.update_calculations(source="demand")
@@ -1936,6 +1948,10 @@ class OverlayApp:
                             disabledbackground=BG_HEADER, disabledforeground=TEXT_MUTED,
                             font=("Segoe UI", 9), bd=1, relief="solid", width=25)
         ent_name.pack(side="left", padx=(10, 0))
+        ent_name.bind("<Button-1>", lambda e: ent_name.focus_force())
+
+        popup.bind("<Button-1>", lambda e: popup.focus_force() if not isinstance(e.widget, (tk.Entry, tk.Text)) else None)
+        content_frame.bind("<Button-1>", lambda e: popup.focus_force() if not isinstance(e.widget, (tk.Entry, tk.Text)) else None)
         
 
         var_anonymous = tk.BooleanVar(value=True)
@@ -1964,6 +1980,7 @@ class OverlayApp:
         txt_body = tk.Text(content_frame, bg=BG_MAIN, fg=TEXT_LIGHT, insertbackground=TEXT_LIGHT,
                            font=("Segoe UI", 9), bd=1, relief="solid", height=6, wrap="word")
         txt_body.pack(fill="both", expand=True, pady=(0, 10))
+        txt_body.bind("<Button-1>", lambda e: txt_body.focus_force())
         
 
         lbl_status = tk.Label(content_frame, text="", bg=BG_CARD, fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold"), wraplength=340, justify="center")
@@ -2072,6 +2089,7 @@ class OverlayApp:
                 self.update_topmost_state()
 
         popup.bind("<Destroy>", on_popup_destroy)
+        popup.focus_force()
 
     def execute_self_update(self, latest_version, download_filename, download_url):
         if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
