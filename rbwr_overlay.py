@@ -303,6 +303,7 @@ class Calculator:
 class OverlayApp:
     def __init__(self, root: tk.Tk):
         self.root = root
+        self.root.withdraw()
         self.root.title(f"RBWR APR Calculator v{__version__}")
         
         # Load saved settings
@@ -350,6 +351,8 @@ class OverlayApp:
         self.height_compact = 60
         self.settings_window = None
         self.suggestions_window = None
+        self.update_window = None
+        self.loading_window = None
         
         self._drag_data = {"x": 0, "y": 0}
         
@@ -411,9 +414,11 @@ class OverlayApp:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
 
-        x = screen_width - w - 40
-        y = screen_height - h - 120
+        x = (screen_width - w) // 2
+        y = (screen_height - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.start_x = x
+        self.start_y = y
 
     def show_context_menu(self, event):
         try:
@@ -434,8 +439,13 @@ class OverlayApp:
             
             ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
             
-            self.root.withdraw()
-            self.root.after(10, self.root.deiconify)
+            w = self.width_compact if self.is_compact else self.width_detailed
+            h = self.height_compact if self.is_compact else self.height_detailed
+            x = getattr(self, 'start_x', 0)
+            y = getattr(self, 'start_y', 0)
+            
+            self.root.deiconify()
+            self.root.geometry(f"{w}x{h}+{x}+{y}")
         except Exception as e:
             log.warning(f"Failed to set WS_EX_APPWINDOW: {e}")
 
@@ -837,6 +847,10 @@ class OverlayApp:
             self.settings_window.lift(self.root)
         if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
             self.suggestions_window.lift(self.root)
+        if hasattr(self, 'update_window') and self.update_window and self.update_window.winfo_exists():
+            self.update_window.lift(self.root)
+        if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+            self.loading_window.lift(self.root)
 
     def open_log_file(self):
         try:
@@ -1642,7 +1656,18 @@ class OverlayApp:
             if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
                 suggestions_open = True
 
-            if (settings_open and self.settings_window) or (suggestions_open and self.suggestions_window):
+            update_open = False
+            if hasattr(self, 'update_window') and self.update_window and self.update_window.winfo_exists():
+                update_open = True
+
+            loading_open = False
+            if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+                loading_open = True
+
+            if (settings_open and self.settings_window) or \
+               (suggestions_open and self.suggestions_window) or \
+               (update_open and self.update_window) or \
+               (loading_open and self.loading_window):
                 if self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", False)
 
@@ -1655,6 +1680,16 @@ class OverlayApp:
                     if not self.suggestions_window.attributes("-topmost"):
                         self.suggestions_window.attributes("-topmost", True)
                     self.suggestions_window.lift()
+
+                if update_open and self.update_window:
+                    if not self.update_window.attributes("-topmost"):
+                        self.update_window.attributes("-topmost", True)
+                    self.update_window.lift()
+
+                if loading_open and self.loading_window:
+                    if not self.loading_window.attributes("-topmost"):
+                        self.loading_window.attributes("-topmost", True)
+                    self.loading_window.lift()
                 return
 
             if self.is_topmost:
@@ -1740,23 +1775,80 @@ class OverlayApp:
         threading.Thread(target=run_check, daemon=True).start()
 
     def show_update_dialog(self, latest_version, release_notes, download_filename, download_url):
+        if hasattr(self, 'update_window') and self.update_window and self.update_window.winfo_exists():
+            self.update_window.deiconify()
+            self.update_window.lift()
+            self.update_window.attributes("-topmost", True)
+            self.update_window.focus_force()
+            return
+
         popup = tk.Toplevel(self.root)
+        self.update_window = popup
+        popup.transient(self.root)
+
         popup.title("Update Available")
-        popup.geometry("380x260")
         popup.configure(bg=BG_CARD, highlightbackground=ACCENT_CYAN, highlightcolor=ACCENT_CYAN, highlightthickness=1)
         popup.overrideredirect(True)
         popup.attributes("-topmost", True)
         
-        x = self.root.winfo_x() + (self.root.winfo_width() - 380) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 260) // 2
-        popup.geometry(f"+{x}+{y}")
+        # Center relative to root window and snap inside screen bounds
+        w = 380
+        h = 260
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         
+        screen_w = popup.winfo_screenwidth()
+        screen_h = popup.winfo_screenheight()
+        if x < 0:
+            x = 0
+        elif x + w > screen_w:
+            x = screen_w - w
+        if y < 0:
+            y = 0
+        elif y + h > screen_h:
+            y = screen_h - h
+            
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+        
+        drag_data = {"x": 0, "y": 0}
+        def start_drag(event):
+            drag_data["x"] = event.x
+            drag_data["y"] = event.y
+            
+        def do_drag(event):
+            dx = event.x - drag_data["x"]
+            dy = event.y - drag_data["y"]
+            px = popup.winfo_x() + dx
+            py = popup.winfo_y() + dy
+
+            # Snap/Constrain within screen boundaries
+            if px < 0:
+                px = 0
+            elif px + w > screen_w:
+                px = screen_w - w
+            if py < 0:
+                py = 0
+            elif py + h > screen_h:
+                py = screen_h - h
+
+            popup.geometry(f"+{px}+{py}")
+            
         title_bar = tk.Frame(popup, bg=BG_HEADER, height=30)
         title_bar.pack(fill="x", side="top")
+        title_bar.bind("<Button-1>", start_drag)
+        title_bar.bind("<B1-Motion>", do_drag)
         
         title_lbl = tk.Label(title_bar, text=" ⚡ SYSTEM UPDATE AVAILABLE", bg=BG_HEADER, fg=ACCENT_GOLD,
                              font=("Consolas", 9, "bold"))
         title_lbl.pack(side="left", padx=10, pady=5)
+        title_lbl.bind("<Button-1>", start_drag)
+        title_lbl.bind("<B1-Motion>", do_drag)
+
+        btn_close = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"), cursor="hand2")
+        btn_close.pack(side="right", fill="y")
+        btn_close.bind("<Button-1>", lambda e: popup.destroy())
+        btn_close.bind("<Enter>", lambda e: btn_close.config(bg=ACCENT_RED, fg=TEXT_LIGHT))
+        btn_close.bind("<Leave>", lambda e: btn_close.config(bg=BG_HEADER, fg=TEXT_MUTED))
         
         content_frame = tk.Frame(popup, bg=BG_CARD, padx=15, pady=15)
         content_frame.pack(fill="both", expand=True)
@@ -1804,6 +1896,13 @@ class OverlayApp:
         btn_cancel.bind("<Button-1>", lambda e: remind_later())
         btn_cancel.bind("<Enter>", lambda e: btn_cancel.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
+
+        def on_popup_destroy(event):
+            if event.widget == popup:
+                self.update_window = None
+                self.update_topmost_state()
+
+        popup.bind("<Destroy>", on_popup_destroy)
 
     def open_suggestions_dialog(self):
         if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
@@ -2038,22 +2137,75 @@ class OverlayApp:
         popup.bind("<Destroy>", on_popup_destroy)
 
     def execute_self_update(self, latest_version, download_filename, download_url):
+        if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
+            self.loading_window.lift()
+            self.loading_window.attributes("-topmost", True)
+            self.loading_window.focus_force()
+            return
+
         loading = tk.Toplevel(self.root)
+        self.loading_window = loading
+        loading.transient(self.root)
+
         loading.title("Downloading Update")
-        loading.geometry("300x120")
         loading.configure(bg=BG_CARD, highlightbackground=ACCENT_CYAN, highlightcolor=ACCENT_CYAN, highlightthickness=1)
         loading.overrideredirect(True)
         loading.attributes("-topmost", True)
         
-        x = self.root.winfo_x() + (self.root.winfo_width() - 300) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 120) // 2
-        loading.geometry(f"+{x}+{y}")
+        # Center relative to root window and snap inside screen bounds
+        w = 300
+        h = 120
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+        
+        screen_w = loading.winfo_screenwidth()
+        screen_h = loading.winfo_screenheight()
+        if x < 0:
+            x = 0
+        elif x + w > screen_w:
+            x = screen_w - w
+        if y < 0:
+            y = 0
+        elif y + h > screen_h:
+            y = screen_h - h
+            
+        loading.geometry(f"{w}x{h}+{x}+{y}")
+        
+        drag_data = {"x": 0, "y": 0}
+        def start_drag(event):
+            drag_data["x"] = event.x
+            drag_data["y"] = event.y
+            
+        def do_drag(event):
+            dx = event.x - drag_data["x"]
+            dy = event.y - drag_data["y"]
+            px = loading.winfo_x() + dx
+            py = loading.winfo_y() + dy
+
+            # Snap/Constrain within screen boundaries
+            if px < 0:
+                px = 0
+            elif px + w > screen_w:
+                px = screen_w - w
+            if py < 0:
+                py = 0
+            elif py + h > screen_h:
+                py = screen_h - h
+
+            loading.geometry(f"+{px}+{py}")
+            
+        loading.bind("<Button-1>", start_drag)
+        loading.bind("<B1-Motion>", do_drag)
         
         lbl_status = tk.Label(loading, text="⚡ DOWNLOADING SYSTEM UPDATE...", bg=BG_CARD, fg=ACCENT_CYAN, font=("Consolas", 10, "bold"))
         lbl_status.pack(pady=(25, 5))
+        lbl_status.bind("<Button-1>", start_drag)
+        lbl_status.bind("<B1-Motion>", do_drag)
         
         lbl_sub = tk.Label(loading, text=f"Fetching v{latest_version}...", bg=BG_CARD, fg=TEXT_MUTED, font=("Consolas", 8))
         lbl_sub.pack(pady=(0, 15))
+        lbl_sub.bind("<Button-1>", start_drag)
+        lbl_sub.bind("<B1-Motion>", do_drag)
         
         def do_download():
             import urllib.request
@@ -2092,6 +2244,13 @@ class OverlayApp:
                 ])
                 
         threading.Thread(target=do_download, daemon=True).start()
+
+        def on_loading_destroy(event):
+            if event.widget == loading:
+                self.loading_window = None
+                self.update_topmost_state()
+
+        loading.bind("<Destroy>", on_loading_destroy)
 
     def on_input_update(self, source):
         if self.updating_fields:
