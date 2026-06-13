@@ -8,7 +8,7 @@ import logging
 import traceback
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.5.6"
+__version__ = "1.6.0"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -43,7 +43,6 @@ def show_crash_dialog(tb_text):
         crash_win.configure(bg="#07080a")
         crash_win.attributes("-topmost", True)
         
-        # Center the window
         screen_width = crash_win.winfo_screenwidth()
         screen_height = crash_win.winfo_screenheight()
         x = (screen_width - 560) // 2
@@ -346,14 +345,17 @@ class OverlayApp:
         threading.Thread(target=self.scan_loop, daemon=True).start()
         
         self.width_detailed = 420
-        self.height_detailed = 420
+        self.height_detailed = 350
         self.width_compact = 430
         self.height_compact = 60
+        self.settings_window = None
+        self.suggestions_window = None
         
         self._drag_data = {"x": 0, "y": 0}
         
         self.var_demand = tk.StringVar(value="0")
         self.var_rtp = tk.StringVar(value="0")
+        self.var_usage = tk.StringVar(value=f"{self.calc.usage:.2f}")
         self.var_demand.trace_add("write", lambda name, index, mode: self.on_input_update("demand"))
         self.var_rtp.trace_add("write", lambda name, index, mode: self.on_input_update("rtp"))
         self.var_hud_scan = tk.BooleanVar(value=settings.get("enable_hud_scan", True))
@@ -403,6 +405,7 @@ class OverlayApp:
         
         self.check_for_updates()
         self.check_focus_loop()
+        self.root.after(10, self.setup_app_window_style)
 
     def center_window(self, w, h):
         screen_width = self.root.winfo_screenwidth()
@@ -417,6 +420,24 @@ class OverlayApp:
             self.context_menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.context_menu.grab_release()
+
+    def setup_app_window_style(self):
+        try:
+            GWL_EXSTYLE = -20
+            WS_EX_APPWINDOW = 0x00040000
+            WS_EX_TOOLWINDOW = 0x00000080
+            
+            hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+            style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+            style = style & ~WS_EX_TOOLWINDOW
+            style = style | WS_EX_APPWINDOW
+            
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+            
+            self.root.withdraw()
+            self.root.after(10, self.root.deiconify)
+        except Exception as e:
+            log.warning(f"Failed to set WS_EX_APPWINDOW: {e}")
 
     def create_widgets(self):
         for child in self.root.winfo_children():
@@ -492,6 +513,12 @@ class OverlayApp:
         btn_close.bind("<Enter>", lambda e: btn_close.config(bg=ACCENT_RED, fg=TEXT_LIGHT))
         btn_close.bind("<Leave>", lambda e: btn_close.config(bg=BG_HEADER, fg=TEXT_MUTED))
 
+        btn_settings = tk.Label(title_bar, text="⚙", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11))
+        btn_settings.pack(side="right", fill="y")
+        btn_settings.bind("<Button-1>", lambda e: self.open_settings_dialog())
+        btn_settings.bind("<Enter>", lambda e: btn_settings.config(bg=BG_CARD, fg=ACCENT_CYAN))
+        btn_settings.bind("<Leave>", lambda e: btn_settings.config(bg=BG_HEADER, fg=TEXT_MUTED))
+
         btn_comp = tk.Label(title_bar, text="⛶", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11))
         btn_comp.pack(side="right", fill="y")
         btn_comp.bind("<Button-1>", lambda e: self.toggle_compact())
@@ -504,12 +531,6 @@ class OverlayApp:
         self.btn_topmost.bind("<Button-1>", lambda e: self.toggle_topmost())
         self.btn_topmost.bind("<Enter>", lambda e: self.btn_topmost.config(bg=BG_CARD, fg=ACCENT_CYAN))
         self.btn_topmost.bind("<Leave>", lambda e: self.btn_topmost.config(bg=BG_HEADER, fg=TEXT_MUTED))
-
-        self.btn_feedback = tk.Label(title_bar, text="💬 Feedback", bg=BG_HEADER, fg=TEXT_MUTED, padx=8, font=("Segoe UI", 8, "bold"), cursor="hand2")
-        self.btn_feedback.pack(side="right", fill="y")
-        self.btn_feedback.bind("<Button-1>", lambda e: self.open_suggestions_dialog())
-        self.btn_feedback.bind("<Enter>", lambda e: self.btn_feedback.config(bg=BG_CARD, fg=ACCENT_CYAN))
-        self.btn_feedback.bind("<Leave>", lambda e: self.btn_feedback.config(bg=BG_HEADER, fg=TEXT_MUTED))
 
         container = tk.Frame(self.root, bg=BG_MAIN, padx=15, pady=15)
         container.pack(fill="both", expand=True)
@@ -530,108 +551,6 @@ class OverlayApp:
         self.btn_u2.bind("<Button-1>", lambda e: self.select_unit(2))
 
         self.update_unit_ui_state()
-
-        self.config_toggle_frame = tk.Frame(container, bg=BG_MAIN)
-        self.config_toggle_frame.pack(fill="x", pady=2)
-        self.make_draggable(self.config_toggle_frame)
-
-        arrow = "▼" if self.show_config else "▲"
-        self.lbl_config_toggle = tk.Label(self.config_toggle_frame, text=f"⚙ Configuration Settings {arrow}", 
-                                          bg=BG_MAIN, fg=TEXT_MUTED, font=("Segoe UI", 8, "bold"), cursor="hand2")
-        self.lbl_config_toggle.pack(anchor="w")
-        self.lbl_config_toggle.bind("<Button-1>", lambda e: self.toggle_config_panel())
-
-        self.config_panel = tk.Frame(container, bg=BG_CARD, padx=10, pady=10)
-        if self.show_config:
-            self.config_panel.pack(fill="x", pady=(2, 10))
-        self.make_draggable(self.config_panel)
-
-        lbl_usage = tk.Label(self.config_panel, text="Site Usage (MWe):", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_usage.grid(row=0, column=0, sticky="w", pady=4)
-        
-        self.var_usage = tk.StringVar(value=str(self.calc.usage))
-        self.ent_usage = tk.Entry(self.config_panel, textvariable=self.var_usage, bg=BG_CARD, fg=ACCENT_CYAN, 
-                                  readonlybackground=BG_CARD, insertbackground=TEXT_LIGHT, font=("Consolas", 10, "bold"), 
-                                  bd=0, highlightthickness=0, width=10, justify="center", state="readonly")
-        self.ent_usage.grid(row=0, column=1, sticky="e", padx=10, pady=4)
-
-        lbl_usage_note = tk.Label(self.config_panel, text="Use Recirc Speed Override if Site Usage is off by a lot (10-15 MW off)", 
-                                  bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 7, "italic"), justify="left")
-        lbl_usage_note.grid(row=1, column=0, columnspan=2, sticky="w", padx=(10, 0), pady=(0, 4))
-
-        lbl_opacity = tk.Label(self.config_panel, text="Overlay Opacity:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_opacity.grid(row=2, column=0, sticky="w", pady=4)
-
-        self.slider_opacity = ttk.Scale(self.config_panel, from_=0.3, to=1.0, value=self.root.attributes("-alpha"),
-                                         orient="horizontal", command=self.on_opacity_change)
-        self.slider_opacity.grid(row=2, column=1, sticky="we", padx=10, pady=4)
-
-        lbl_hotkey = tk.Label(self.config_panel, text="Scan Hotkey:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_hotkey.grid(row=3, column=0, sticky="w", pady=4)
-
-        self.btn_hotkey_bind = tk.Label(self.config_panel, text=self.var_hotkey.get(), bg=BG_MAIN, fg=ACCENT_CYAN,
-                                        font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_hotkey_bind.grid(row=3, column=1, sticky="e", padx=10, pady=4)
-        self.btn_hotkey_bind.bind("<Button-1>", lambda e: self.listen_for_hotkey())
-        self.btn_hotkey_bind.bind("<Enter>", lambda e: self.btn_hotkey_bind.config(bg=BG_HEADER, fg=TEXT_LIGHT))
-        self.btn_hotkey_bind.bind("<Leave>", lambda e: self.btn_hotkey_bind.config(bg=BG_MAIN, fg=ACCENT_CYAN if self.btn_hotkey_bind.cget("text") != "[ PRESS KEY... ]" else ACCENT_GOLD))
-
-        lbl_log = tk.Label(self.config_panel, text="Diagnostics:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_log.grid(row=4, column=0, sticky="w", pady=4)
-
-        self.btn_open_log = tk.Label(self.config_panel, text="📄 Open Log", bg=BG_MAIN, fg=ACCENT_CYAN,
-                                      font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_open_log.grid(row=4, column=1, sticky="e", padx=10, pady=4)
-        self.btn_open_log.bind("<Button-1>", lambda e: self.open_log_file())
-        self.btn_open_log.bind("<Enter>", lambda e: self.btn_open_log.config(bg=BG_HEADER, fg=TEXT_LIGHT))
-        self.btn_open_log.bind("<Leave>", lambda e: self.btn_open_log.config(bg=BG_MAIN, fg=ACCENT_CYAN))
-
-        lbl_hud_scan = tk.Label(self.config_panel, text="Scan HUD first:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_hud_scan.grid(row=5, column=0, sticky="w", pady=4)
-
-        hud_status = "🟢 ENABLED" if self.var_hud_scan.get() else "🔴 DISABLED"
-        hud_color = ACCENT_GREEN if self.var_hud_scan.get() else ACCENT_RED
-        self.btn_hud_scan_toggle = tk.Label(self.config_panel, text=hud_status, bg=BG_MAIN, fg=hud_color,
-                                            font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_hud_scan_toggle.grid(row=5, column=1, sticky="e", padx=10, pady=4)
-        self.btn_hud_scan_toggle.bind("<Button-1>", lambda e: self.toggle_hud_scan_setting())
-        self.btn_hud_scan_toggle.bind("<Enter>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_HEADER))
-        self.btn_hud_scan_toggle.bind("<Leave>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_MAIN))
-
-        lbl_roblox_topmost = tk.Label(self.config_panel, text="Topmost on Roblox:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_roblox_topmost.grid(row=6, column=0, sticky="w", pady=4)
-
-        roblox_topmost_status = "🟢 ENABLED" if self.var_topmost_on_roblox.get() else "🔴 DISABLED"
-        roblox_topmost_color = ACCENT_GREEN if self.var_topmost_on_roblox.get() else ACCENT_RED
-        self.btn_roblox_topmost_toggle = tk.Label(self.config_panel, text=roblox_topmost_status, bg=BG_MAIN, fg=roblox_topmost_color,
-                                                  font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
-        self.btn_roblox_topmost_toggle.grid(row=6, column=1, sticky="e", padx=10, pady=4)
-        self.btn_roblox_topmost_toggle.bind("<Button-1>", lambda e: self.toggle_roblox_topmost_setting())
-        self.btn_roblox_topmost_toggle.bind("<Enter>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_HEADER))
-        self.btn_roblox_topmost_toggle.bind("<Leave>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_MAIN))
-
-        lbl_recirc = tk.Label(self.config_panel, text="Recirc Override (%):", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
-        lbl_recirc.grid(row=7, column=0, sticky="w", pady=4)
-
-        recirc_frame = tk.Frame(self.config_panel, bg=BG_CARD)
-        recirc_frame.grid(row=7, column=1, sticky="e", padx=10, pady=4)
-
-        self.ent_recirc = tk.Entry(recirc_frame, textvariable=self.var_recirc_override, bg=BG_MAIN, fg=ACCENT_CYAN,
-                                   insertbackground=TEXT_LIGHT, font=("Consolas", 9, "bold"), bd=1, relief="solid",
-                                   width=6, justify="center")
-        self.ent_recirc.pack(side="left", padx=(0, 5))
-
-        btn_recirc_reset = tk.Label(recirc_frame, text="Reset", bg=BG_MAIN, fg=TEXT_MUTED,
-                                    font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=8, pady=2, cursor="hand2")
-        btn_recirc_reset.pack(side="left")
-        btn_recirc_reset.bind("<Button-1>", lambda e: self.reset_recirc_override())
-        btn_recirc_reset.bind("<Enter>", lambda e: btn_recirc_reset.config(bg=BG_HEADER, fg=TEXT_LIGHT))
-        btn_recirc_reset.bind("<Leave>", lambda e: btn_recirc_reset.config(bg=BG_MAIN, fg=TEXT_MUTED))
-
-        lbl_ver = tk.Label(self.config_panel, text=f"Version: {__version__}", bg=BG_CARD, fg=TEXT_MUTED, font=("Segoe UI", 8))
-        lbl_ver.grid(row=8, column=0, columnspan=2, sticky="w", pady=(8, 0))
-
-
 
         input_card = tk.Frame(container, bg=BG_MAIN, bd=1, relief="solid")
         input_card.pack(fill="both", expand=True, pady=(5, 5))
@@ -678,9 +597,10 @@ class OverlayApp:
         self.btn_scan.bind("<Enter>", self.on_scan_enter)
         self.btn_scan.bind("<Leave>", self.on_scan_leave)
 
-        lbl_rtp_in = tk.Label(input_card, text="CORE POWER (RTP%)", bg=BG_MAIN, fg=TEXT_MUTED, font=("Consolas", 8, "bold"))
-        lbl_rtp_in.grid(row=3, column=0, sticky="w", pady=2, padx=10)
-        self.make_draggable(lbl_rtp_in)
+        unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
+        self.lbl_rtp_in = tk.Label(input_card, text=f"CORE POWER ({unit_suffix}%)", bg=BG_MAIN, fg=TEXT_MUTED, font=("Consolas", 8, "bold"))
+        self.lbl_rtp_in.grid(row=3, column=0, sticky="w", pady=2, padx=10)
+        self.make_draggable(self.lbl_rtp_in)
 
         self.ent_rtp = tk.Entry(input_card, textvariable=self.var_rtp, bg=BG_CARD, fg=TEXT_LIGHT, 
                                 insertbackground=TEXT_LIGHT, font=("Consolas", 11, "bold"), bd=0, 
@@ -708,11 +628,23 @@ class OverlayApp:
         self.lbl_feed_val.grid(row=4, column=1, sticky="w", pady=(0, 10), padx=10)
         self.make_draggable(self.lbl_feed_val)
 
+        self.lbl_debug = tk.Label(container, text="[ OCR DIAG: STANDBY ]", bg=BG_MAIN, fg=TEXT_MUTED,
+                                  font=("Consolas", 7))
+        self.lbl_debug.pack(side="bottom", fill="x", pady=(4, 0))
+
+        self.btn_feedback = tk.Label(container, text="💬 Feedback & Suggestions", bg=BG_MAIN, fg=TEXT_MUTED,
+                                     font=("Segoe UI", 8, "bold"), cursor="hand2")
+        self.btn_feedback.pack(side="bottom", pady=(3, 3))
+        self.btn_feedback.bind("<Button-1>", lambda e: self.open_suggestions_dialog())
+        self.btn_feedback.bind("<Enter>", lambda e: self.btn_feedback.config(fg=ACCENT_CYAN))
+        self.btn_feedback.bind("<Leave>", lambda e: self.btn_feedback.config(fg=TEXT_MUTED))
+
         self.neon_frame = tk.Frame(container, bg=BG_CARD, padx=8, pady=8, bd=1, relief="solid")
         self.neon_frame.pack(fill="x", side="bottom", pady=(5, 0))
         self.make_draggable(self.neon_frame)
 
-        self.lbl_neon_rtp = tk.Label(self.neon_frame, text="0.0% RTP", bg=BG_CARD, fg=ACCENT_CYAN, 
+        unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
+        self.lbl_neon_rtp = tk.Label(self.neon_frame, text=f"0.00% {unit_suffix}", bg=BG_CARD, fg=ACCENT_CYAN, 
                                      font=("Consolas", 18, "bold"))
         self.lbl_neon_rtp.pack(anchor="center")
         self.make_draggable(self.lbl_neon_rtp)
@@ -721,10 +653,6 @@ class OverlayApp:
                                      font=("Consolas", 8, "bold"))
         self.lbl_neon_sub.pack(anchor="center", pady=(2, 0))
         self.make_draggable(self.lbl_neon_sub)
-
-        self.lbl_debug = tk.Label(container, text="[ OCR DIAG: STANDBY ]", bg=BG_MAIN, fg=TEXT_MUTED,
-                                  font=("Consolas", 7))
-        self.lbl_debug.pack(side="bottom", fill="x", pady=(4, 0))
 
         self.update_scan_button_styles()
 
@@ -803,7 +731,8 @@ class OverlayApp:
         self.make_draggable(telemetry_frame)
         telemetry_frame.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        self.lbl_compact_rtp = tk.Label(telemetry_frame, text="0.0% RTP", bg=BG_HEADER, fg=ACCENT_CYAN,
+        unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
+        self.lbl_compact_rtp = tk.Label(telemetry_frame, text=f"0.0% {unit_suffix}", bg=BG_HEADER, fg=ACCENT_CYAN,
                                          font=("Consolas", 10, "bold"))
         self.lbl_compact_rtp.pack(side="top", anchor="w")
         self.make_draggable(self.lbl_compact_rtp)
@@ -904,6 +833,10 @@ class OverlayApp:
         self.root.deiconify()
         self.root.lift()
         self.root.attributes("-topmost", self.is_topmost)
+        if hasattr(self, 'settings_window') and self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.lift(self.root)
+        if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
+            self.suggestions_window.lift(self.root)
 
     def open_log_file(self):
         try:
@@ -1163,16 +1096,25 @@ class OverlayApp:
         user32.UnregisterHotKey(None, 101)
 
     def listen_for_hotkey(self):
-        self.btn_hotkey_bind.config(text="[ PRESS KEY... ]", fg=ACCENT_GOLD, bg=BG_HEADER)
-        self.root.bind("<Key>", self.on_hotkey_captured)
-        self.root.focus_set()
+        if hasattr(self, 'btn_hotkey_bind') and self.btn_hotkey_bind and self.btn_hotkey_bind.winfo_exists():
+            self.btn_hotkey_bind.config(text="[ PRESS KEY... ]", fg=ACCENT_GOLD, bg=BG_HEADER)
+        if hasattr(self, 'settings_window') and self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.bind("<Key>", self.on_hotkey_captured)
+            self.settings_window.focus_set()
+        else:
+            self.root.bind("<Key>", self.on_hotkey_captured)
+            self.root.focus_set()
 
     def on_hotkey_captured(self, event):
-        self.root.unbind("<Key>")
+        if hasattr(self, 'settings_window') and self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.unbind("<Key>")
+        else:
+            self.root.unbind("<Key>")
         key = event.keysym.upper()
         
         if key == "ESCAPE":
-            self.btn_hotkey_bind.config(text=self.var_hotkey.get(), fg=ACCENT_CYAN, bg=BG_MAIN)
+            if hasattr(self, 'btn_hotkey_bind') and self.btn_hotkey_bind and self.btn_hotkey_bind.winfo_exists():
+                self.btn_hotkey_bind.config(text=self.var_hotkey.get(), fg=ACCENT_CYAN, bg=BG_MAIN)
             return
 
         # Map common keysym representations to standard names
@@ -1189,7 +1131,8 @@ class OverlayApp:
                 key = key[:6]
 
         self.var_hotkey.set(key)
-        self.btn_hotkey_bind.config(text=key, fg=ACCENT_GREEN, bg=BG_MAIN)
+        if hasattr(self, 'btn_hotkey_bind') and self.btn_hotkey_bind and self.btn_hotkey_bind.winfo_exists():
+            self.btn_hotkey_bind.config(text=key, fg=ACCENT_GREEN, bg=BG_MAIN)
         self.save_settings()
 
     def perform_screen_scan(self):
@@ -1414,15 +1357,202 @@ class OverlayApp:
                 self.btn_compact_u1.config(bg=BG_HEADER, fg=TEXT_MUTED)
                 self.btn_compact_u2.config(bg=ACCENT_CYAN, fg=BG_MAIN)
 
-    def toggle_config_panel(self):
-        self.show_config = not self.show_config
-        arrow = "▼" if self.show_config else "▲"
-        self.lbl_config_toggle.config(text=f"⚙ Configuration Settings {arrow}")
-        
-        target_h = 420 + (220 if self.show_config else 0)
-        self.root.geometry(f"{self.width_detailed}x{target_h}")
-        self.create_widgets()
-        self.update_calculations(source="demand")
+        unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
+        if hasattr(self, 'lbl_rtp_in') and self.lbl_rtp_in and self.lbl_rtp_in.winfo_exists():
+            self.lbl_rtp_in.config(text=f"CORE POWER ({unit_suffix}%)")
+
+    def open_settings_dialog(self):
+        if hasattr(self, 'settings_window') and self.settings_window and self.settings_window.winfo_exists():
+            self.settings_window.deiconify()
+            self.settings_window.lift()
+            self.settings_window.attributes("-topmost", True)
+            self.settings_window.focus_force()
+            return
+
+        settings_win = tk.Toplevel(self.root)
+        self.settings_window = settings_win
+        settings_win.transient(self.root)
+
+        settings_win.title("APRM Monitor Settings")
+        settings_win.configure(bg=BG_CARD, highlightbackground=ACCENT_CYAN, highlightcolor=ACCENT_CYAN, highlightthickness=1)
+        settings_win.overrideredirect(True)
+        settings_win.attributes("-topmost", True)
+
+        # Center relative to root window and snap inside screen bounds
+        w = 380
+        h = 420
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+
+        screen_w = settings_win.winfo_screenwidth()
+        screen_h = settings_win.winfo_screenheight()
+        if x < 0:
+            x = 0
+        elif x + w > screen_w:
+            x = screen_w - w
+        if y < 0:
+            y = 0
+        elif y + h > screen_h:
+            y = screen_h - h
+
+        settings_win.geometry(f"{w}x{h}+{x}+{y}")
+
+        drag_data = {"x": 0, "y": 0}
+        def start_drag(event):
+            drag_data["x"] = event.x
+            drag_data["y"] = event.y
+            
+        def do_drag(event):
+            dx = event.x - drag_data["x"]
+            dy = event.y - drag_data["y"]
+            px = settings_win.winfo_x() + dx
+            py = settings_win.winfo_y() + dy
+
+            # Snap/Constrain settings window within screen boundaries
+            if px < 0:
+                px = 0
+            elif px + w > screen_w:
+                px = screen_w - w
+            if py < 0:
+                py = 0
+            elif py + h > screen_h:
+                py = screen_h - h
+
+            settings_win.geometry(f"+{px}+{py}")
+
+        title_bar = tk.Frame(settings_win, bg=BG_HEADER, height=30)
+        title_bar.pack(fill="x", side="top")
+        title_bar.bind("<Button-1>", start_drag)
+        title_bar.bind("<B1-Motion>", do_drag)
+
+        title_lbl = tk.Label(title_bar, text=" ⚙ CONFIGURATION SETTINGS", bg=BG_HEADER, fg=ACCENT_CYAN,
+                             font=("Consolas", 9, "bold"))
+        title_lbl.pack(side="left", padx=10, pady=5)
+        title_lbl.bind("<Button-1>", start_drag)
+        title_lbl.bind("<B1-Motion>", do_drag)
+
+        btn_close = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"), cursor="hand2")
+        btn_close.pack(side="right", fill="y")
+        btn_close.bind("<Button-1>", lambda e: settings_win.destroy())
+        btn_close.bind("<Enter>", lambda e: btn_close.config(bg=ACCENT_RED, fg=TEXT_LIGHT))
+        btn_close.bind("<Leave>", lambda e: btn_close.config(bg=BG_HEADER, fg=TEXT_MUTED))
+
+        content_frame = tk.Frame(settings_win, bg=BG_CARD, padx=15, pady=10)
+        content_frame.pack(fill="both", expand=True)
+
+        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(1, weight=1)
+
+
+        lbl_usage = tk.Label(content_frame, text="Site Usage (MWe):", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_usage.grid(row=0, column=0, sticky="w", pady=4)
+
+        self.ent_usage = tk.Entry(content_frame, textvariable=self.var_usage, bg=BG_CARD, fg=ACCENT_CYAN, 
+                                  readonlybackground=BG_CARD, insertbackground=TEXT_LIGHT, font=("Consolas", 10, "bold"), 
+                                  bd=0, highlightthickness=0, width=10, justify="center", state="readonly")
+        self.ent_usage.grid(row=0, column=1, sticky="e", padx=10, pady=4)
+
+
+        lbl_usage_note = tk.Label(content_frame, text="Use Recirc Speed Override if Site Usage is off by a lot (10-15 MW off)", 
+                                  bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 7, "italic"), justify="left", wraplength=340)
+        lbl_usage_note.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 4))
+
+
+        lbl_opacity = tk.Label(content_frame, text="Overlay Opacity:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_opacity.grid(row=2, column=0, sticky="w", pady=4)
+
+        self.slider_opacity = ttk.Scale(content_frame, from_=0.3, to=1.0, value=self.root.attributes("-alpha"),
+                                         orient="horizontal", command=self.on_opacity_change)
+        self.slider_opacity.grid(row=2, column=1, sticky="we", padx=10, pady=4)
+
+
+        lbl_hotkey = tk.Label(content_frame, text="Scan Hotkey:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_hotkey.grid(row=3, column=0, sticky="w", pady=4)
+
+        self.btn_hotkey_bind = tk.Label(content_frame, text=self.var_hotkey.get(), bg=BG_MAIN, fg=ACCENT_CYAN,
+                                        font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        self.btn_hotkey_bind.grid(row=3, column=1, sticky="e", padx=10, pady=4)
+        self.btn_hotkey_bind.bind("<Button-1>", lambda e: self.listen_for_hotkey())
+        self.btn_hotkey_bind.bind("<Enter>", lambda e: self.btn_hotkey_bind.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        self.btn_hotkey_bind.bind("<Leave>", lambda e: self.btn_hotkey_bind.config(bg=BG_MAIN, fg=ACCENT_CYAN if self.btn_hotkey_bind.cget("text") != "[ PRESS KEY... ]" else ACCENT_GOLD))
+
+
+        lbl_log = tk.Label(content_frame, text="Diagnostics:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_log.grid(row=4, column=0, sticky="w", pady=4)
+
+        self.btn_open_log = tk.Label(content_frame, text="📄 Open Log", bg=BG_MAIN, fg=ACCENT_CYAN,
+                                      font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        self.btn_open_log.grid(row=4, column=1, sticky="e", padx=10, pady=4)
+        self.btn_open_log.bind("<Button-1>", lambda e: self.open_log_file())
+        self.btn_open_log.bind("<Enter>", lambda e: self.btn_open_log.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        self.btn_open_log.bind("<Leave>", lambda e: self.btn_open_log.config(bg=BG_MAIN, fg=ACCENT_CYAN))
+
+
+        lbl_hud_scan = tk.Label(content_frame, text="Scan HUD first:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_hud_scan.grid(row=5, column=0, sticky="w", pady=4)
+
+        hud_status = "🟢 ENABLED" if self.var_hud_scan.get() else "🔴 DISABLED"
+        hud_color = ACCENT_GREEN if self.var_hud_scan.get() else ACCENT_RED
+        self.btn_hud_scan_toggle = tk.Label(content_frame, text=hud_status, bg=BG_MAIN, fg=hud_color,
+                                            font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        self.btn_hud_scan_toggle.grid(row=5, column=1, sticky="e", padx=10, pady=4)
+        self.btn_hud_scan_toggle.bind("<Button-1>", lambda e: self.toggle_hud_scan_setting())
+        self.btn_hud_scan_toggle.bind("<Enter>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_HEADER))
+        self.btn_hud_scan_toggle.bind("<Leave>", lambda e: self.btn_hud_scan_toggle.config(bg=BG_MAIN))
+
+
+        lbl_roblox_topmost = tk.Label(content_frame, text="Topmost on Roblox:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_roblox_topmost.grid(row=6, column=0, sticky="w", pady=4)
+
+        roblox_topmost_status = "🟢 ENABLED" if self.var_topmost_on_roblox.get() else "🔴 DISABLED"
+        roblox_topmost_color = ACCENT_GREEN if self.var_topmost_on_roblox.get() else ACCENT_RED
+        self.btn_roblox_topmost_toggle = tk.Label(content_frame, text=roblox_topmost_status, bg=BG_MAIN, fg=roblox_topmost_color,
+                                                  font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        self.btn_roblox_topmost_toggle.grid(row=6, column=1, sticky="e", padx=10, pady=4)
+        self.btn_roblox_topmost_toggle.bind("<Button-1>", lambda e: self.toggle_roblox_topmost_setting())
+        self.btn_roblox_topmost_toggle.bind("<Enter>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_HEADER))
+        self.btn_roblox_topmost_toggle.bind("<Leave>", lambda e: self.btn_roblox_topmost_toggle.config(bg=BG_MAIN))
+
+
+        lbl_recirc = tk.Label(content_frame, text="Recirc Override (%):", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_recirc.grid(row=7, column=0, sticky="w", pady=4)
+
+        recirc_frame = tk.Frame(content_frame, bg=BG_CARD)
+        recirc_frame.grid(row=7, column=1, sticky="e", padx=10, pady=4)
+
+        self.ent_recirc = tk.Entry(recirc_frame, textvariable=self.var_recirc_override, bg=BG_MAIN, fg=ACCENT_CYAN,
+                                   insertbackground=TEXT_LIGHT, font=("Consolas", 9, "bold"), bd=1, relief="solid",
+                                   width=6, justify="center")
+        self.ent_recirc.pack(side="left", padx=(0, 5))
+
+        btn_recirc_reset = tk.Label(recirc_frame, text="Reset", bg=BG_MAIN, fg=TEXT_MUTED,
+                                    font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=8, pady=2, cursor="hand2")
+        btn_recirc_reset.pack(side="left")
+        btn_recirc_reset.bind("<Button-1>", lambda e: self.reset_recirc_override())
+        btn_recirc_reset.bind("<Enter>", lambda e: btn_recirc_reset.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_recirc_reset.bind("<Leave>", lambda e: btn_recirc_reset.config(bg=BG_MAIN, fg=TEXT_MUTED))
+
+
+        lbl_feedback = tk.Label(content_frame, text="Feedback & Help:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
+        lbl_feedback.grid(row=8, column=0, sticky="w", pady=4)
+
+        btn_feedback_settings = tk.Label(content_frame, text="💬 Feedback", bg=BG_MAIN, fg=ACCENT_CYAN,
+                                      font=("Consolas", 9, "bold"), bd=1, relief="solid", padx=10, pady=3, cursor="hand2")
+        btn_feedback_settings.grid(row=8, column=1, sticky="e", padx=10, pady=4)
+        btn_feedback_settings.bind("<Button-1>", lambda e: self.open_suggestions_dialog())
+        btn_feedback_settings.bind("<Enter>", lambda e: btn_feedback_settings.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_feedback_settings.bind("<Leave>", lambda e: btn_feedback_settings.config(bg=BG_MAIN, fg=ACCENT_CYAN))
+
+
+        lbl_ver = tk.Label(content_frame, text=f"Version: {__version__}", bg=BG_CARD, fg=TEXT_MUTED, font=("Segoe UI", 8))
+        lbl_ver.grid(row=9, column=0, columnspan=2, sticky="w", pady=(12, 0))
+
+        def on_settings_destroy(event):
+            if event.widget == settings_win:
+                self.settings_window = None
+                self.update_topmost_state()
+
+        settings_win.bind("<Destroy>", on_settings_destroy)
 
     def on_usage_change(self, *args):
         self.calc.set_usage(self.var_usage.get())
@@ -1504,23 +1634,40 @@ class OverlayApp:
 
     def update_topmost_state(self):
         try:
-            # If standard topmost is enabled, it's always topmost
+            settings_open = False
+            if hasattr(self, 'settings_window') and self.settings_window and self.settings_window.winfo_exists():
+                settings_open = True
+
+            suggestions_open = False
+            if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
+                suggestions_open = True
+
+            if (settings_open and self.settings_window) or (suggestions_open and self.suggestions_window):
+                if self.root.attributes("-topmost"):
+                    self.root.attributes("-topmost", False)
+
+                if settings_open and self.settings_window:
+                    if not self.settings_window.attributes("-topmost"):
+                        self.settings_window.attributes("-topmost", True)
+                    self.settings_window.lift()
+
+                if suggestions_open and self.suggestions_window:
+                    if not self.suggestions_window.attributes("-topmost"):
+                        self.suggestions_window.attributes("-topmost", True)
+                    self.suggestions_window.lift()
+                return
+
             if self.is_topmost:
                 if not self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", True)
-                return
-
-            # If topmost on Roblox is enabled
-            if self.var_topmost_on_roblox.get():
+            elif self.var_topmost_on_roblox.get():
                 hwnd = ctypes.windll.user32.GetForegroundWindow()
                 if hwnd:
-                    # Get focused window title
                     buffer_len = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
                     buffer = ctypes.create_unicode_buffer(buffer_len)
                     ctypes.windll.user32.GetWindowTextW(hwnd, buffer, buffer_len)
                     window_title = buffer.value
                     
-                    # Get PID of active window to compare with ours
                     import os
                     active_pid = wintypes.DWORD()
                     ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(active_pid))
@@ -1538,7 +1685,6 @@ class OverlayApp:
                     if self.root.attributes("-topmost"):
                         self.root.attributes("-topmost", False)
             else:
-                # If both are False, ensure topmost is False
                 if self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", False)
         except Exception:
@@ -1660,19 +1806,41 @@ class OverlayApp:
         btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
 
     def open_suggestions_dialog(self):
+        if hasattr(self, 'suggestions_window') and self.suggestions_window and self.suggestions_window.winfo_exists():
+            self.suggestions_window.deiconify()
+            self.suggestions_window.lift()
+            self.suggestions_window.attributes("-topmost", True)
+            self.suggestions_window.focus_force()
+            return
+
         popup = tk.Toplevel(self.root)
+        self.suggestions_window = popup
+        popup.transient(self.root)
+
         popup.title("Submit Feedback & Suggestions")
-        popup.geometry("380x370")
         popup.configure(bg=BG_CARD, highlightbackground=ACCENT_CYAN, highlightcolor=ACCENT_CYAN, highlightthickness=1)
         popup.overrideredirect(True)
         popup.attributes("-topmost", True)
         
-        # Center relative to root window
-        x = self.root.winfo_x() + (self.root.winfo_width() - 380) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 370) // 2
-        popup.geometry(f"+{x}+{y}")
+        # Center relative to root window and snap inside screen bounds
+        w = 380
+        h = 370
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         
-        # Dragging support for the popup
+        screen_w = popup.winfo_screenwidth()
+        screen_h = popup.winfo_screenheight()
+        if x < 0:
+            x = 0
+        elif x + w > screen_w:
+            x = screen_w - w
+        if y < 0:
+            y = 0
+        elif y + h > screen_h:
+            y = screen_h - h
+            
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+        
         drag_data = {"x": 0, "y": 0}
         def start_drag(event):
             drag_data["x"] = event.x
@@ -1683,6 +1851,17 @@ class OverlayApp:
             dy = event.y - drag_data["y"]
             px = popup.winfo_x() + dx
             py = popup.winfo_y() + dy
+
+            # Snap/Constrain within screen boundaries
+            if px < 0:
+                px = 0
+            elif px + w > screen_w:
+                px = screen_w - w
+            if py < 0:
+                py = 0
+            elif py + h > screen_h:
+                py = screen_h - h
+
             popup.geometry(f"+{px}+{py}")
             
         title_bar = tk.Frame(popup, bg=BG_HEADER, height=30)
@@ -1696,7 +1875,6 @@ class OverlayApp:
         title_lbl.bind("<Button-1>", start_drag)
         title_lbl.bind("<B1-Motion>", do_drag)
         
-        # Close button in title bar
         btn_close = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"), cursor="hand2")
         btn_close.pack(side="right", fill="y")
         btn_close.bind("<Button-1>", lambda e: popup.destroy())
@@ -1706,12 +1884,12 @@ class OverlayApp:
         content_frame = tk.Frame(popup, bg=BG_CARD, padx=15, pady=10)
         content_frame.pack(fill="both", expand=True)
         
-        # Warning label
+
         lbl_warning = tk.Label(content_frame, text="⚠️ Warning: Inappropriate feedback/suggestions or spam can result in a permanent or temporary IP ban.",
                                bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 8, "bold"), justify="left", wraplength=340)
         lbl_warning.pack(anchor="w", pady=(0, 10))
         
-        # Name row
+
         name_frame = tk.Frame(content_frame, bg=BG_CARD)
         name_frame.pack(fill="x", pady=(0, 5))
         
@@ -1723,7 +1901,7 @@ class OverlayApp:
                             font=("Segoe UI", 9), bd=1, relief="solid", width=25)
         ent_name.pack(side="left", padx=(10, 0))
         
-        # Anonymous checkbox
+
         var_anonymous = tk.BooleanVar(value=True)
         
         def toggle_anonymous():
@@ -1739,23 +1917,23 @@ class OverlayApp:
                                   activeforeground=TEXT_LIGHT, font=("Segoe UI", 9), bd=0, highlightthickness=0)
         chk_anon.pack(anchor="w", pady=(0, 10))
         
-        # Disable name by default since anonymous is True
+
         ent_name.config(state="disabled")
         
-        # Suggestion body label
+
         lbl_body = tk.Label(content_frame, text="Feedback / Suggestion details:", bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 9))
         lbl_body.pack(anchor="w", pady=(0, 3))
         
-        # Text widget for suggestion details
+
         txt_body = tk.Text(content_frame, bg=BG_MAIN, fg=TEXT_LIGHT, insertbackground=TEXT_LIGHT,
                            font=("Segoe UI", 9), bd=1, relief="solid", height=6, wrap="word")
         txt_body.pack(fill="both", expand=True, pady=(0, 10))
         
-        # Status message label
+
         lbl_status = tk.Label(content_frame, text="", bg=BG_CARD, fg=ACCENT_CYAN, font=("Segoe UI", 9, "bold"), wraplength=340, justify="center")
         lbl_status.pack(pady=(0, 5))
         
-        # Buttons frame
+
         btn_frame = tk.Frame(content_frame, bg=BG_CARD)
         btn_frame.pack(fill="x", side="bottom")
         
@@ -1836,7 +2014,7 @@ class OverlayApp:
                     
             threading.Thread(target=run_submit, daemon=True).start()
 
-        # Submit button
+
         btn_submit = tk.Label(btn_frame, text="Submit", bg=BG_MAIN, fg=ACCENT_GREEN,
                               font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=15, pady=5, cursor="hand2")
         btn_submit.pack(side="right", padx=(5, 0))
@@ -1844,13 +2022,20 @@ class OverlayApp:
         btn_submit.bind("<Enter>", lambda e: btn_submit.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_submit.bind("<Leave>", lambda e: btn_submit.config(bg=BG_MAIN, fg=ACCENT_GREEN))
         
-        # Cancel button
+
         btn_cancel = tk.Label(btn_frame, text="Cancel", bg=BG_MAIN, fg=TEXT_MUTED,
                               font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=15, pady=5, cursor="hand2")
         btn_cancel.pack(side="right")
         btn_cancel.bind("<Button-1>", lambda e: popup.destroy())
         btn_cancel.bind("<Enter>", lambda e: btn_cancel.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_cancel.bind("<Leave>", lambda e: btn_cancel.config(bg=BG_MAIN, fg=TEXT_MUTED))
+
+        def on_popup_destroy(event):
+            if event.widget == popup:
+                self.suggestions_window = None
+                self.update_topmost_state()
+
+        popup.bind("<Destroy>", on_popup_destroy)
 
     def execute_self_update(self, latest_version, download_filename, download_url):
         loading = tk.Toplevel(self.root)
@@ -1974,10 +2159,11 @@ class OverlayApp:
 
     def render_outputs(self, thermal, flow, gen_load):
         limit = 110 if self.calc.selected_unit == 1 else 115
+        unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
         if not self.is_compact:
             self.lbl_gen_val.config(text=f"⚡ {gen_load:.2f} MWe", fg=ACCENT_CYAN)
             self.lbl_feed_val.config(text=f"💧 {flow:.2f} kg/s", fg=ACCENT_GOLD)
-            self.lbl_neon_rtp.config(text=f"{thermal:.2f}% RTP")
+            self.lbl_neon_rtp.config(text=f"{thermal:.2f}% {unit_suffix}")
             
             if thermal > limit:
                 self.neon_frame.config(bg="#2a0c0e", highlightbackground=ACCENT_RED, bd=1)
@@ -1989,9 +2175,9 @@ class OverlayApp:
                 self.lbl_neon_sub.config(text="⚡ APRM REACTOR POWER STATUS", bg=BG_CARD, fg=TEXT_MUTED)
         else:
             if thermal > limit:
-                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% RTP ⚠️", fg=ACCENT_RED)
+                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% {unit_suffix} ⚠️", fg=ACCENT_RED)
             else:
-                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% RTP", fg=ACCENT_CYAN)
+                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% {unit_suffix}", fg=ACCENT_CYAN)
             self.lbl_compact_flow.config(text=f"[{int(flow)} kg/s]", fg=TEXT_MUTED)
 
     def show_error_state(self):
