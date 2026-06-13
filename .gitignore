@@ -11,3 +11,6 @@ suggestions.json
 server/files/dev
 venv
 *build
+
+rbwr_overlay.exe
+todo.md
