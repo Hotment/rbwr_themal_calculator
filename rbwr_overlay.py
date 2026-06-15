@@ -6,9 +6,10 @@ import os
 import threading
 import logging
 import traceback
+import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.0"
+__version__ = "1.6.1"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -39,6 +40,20 @@ def show_crash_dialog(tb_text):
     try:
         crash_win = tk.Tk()
         crash_win.title("Application Crash Detected")
+        
+        if os.path.exists("icon.ico"):
+            try:
+                crash_win.iconbitmap("icon.ico")
+            except Exception:
+                pass
+        else:
+            try:
+                icon_path = os.path.join(_log_dir, "icon.ico")
+                if os.path.exists(icon_path):
+                    crash_win.iconbitmap(icon_path)
+            except Exception:
+                pass
+
         crash_win.geometry("560x380")
         crash_win.configure(bg="#07080a")
         crash_win.attributes("-topmost", True)
@@ -56,20 +71,44 @@ def show_crash_dialog(tb_text):
                            bg="#07080a", fg="#6c7d93", font=("Segoe UI", 8), justify="center", wraplength=520)
         lbl_sub.pack(pady=(0, 10))
         
+        btn_frame = tk.Frame(crash_win, bg="#07080a")
+        btn_frame.pack(side="bottom", fill="x", pady=15, padx=20)
+        
         txt_frame = tk.Frame(crash_win, bg="#11141a", bd=1, relief="solid")
         txt_frame.pack(fill="both", expand=True, padx=20, pady=5)
+        txt_frame.columnconfigure(0, weight=1)
+        txt_frame.rowconfigure(0, weight=1)
         
         txt_tb = tk.Text(txt_frame, bg="#11141a", fg="#ffffff", insertbackground="#ffffff", font=("Consolas", 8), bd=0, wrap="none")
         txt_tb.insert("1.0", tb_text)
         txt_tb.config(state="disabled")
-        txt_tb.pack(side="left", fill="both", expand=True)
+        txt_tb.grid(row=0, column=0, sticky="nsew")
         
-        scroll_y = tk.Scrollbar(txt_frame, command=txt_tb.yview)
-        scroll_y.pack(side="right", fill="y")
-        txt_tb.config(yscrollcommand=scroll_y.set)
+        from tkinter import ttk
+        style = ttk.Style(crash_win)
+        style.theme_use('clam')
+        style.configure("Dark.Vertical.TScrollbar",
+                        gripcount=0,
+                        background="#1f2430",
+                        troughcolor="#07080a",
+                        bordercolor="#11141a",
+                        arrowcolor="#6c7d93",
+                        lightcolor="#1f2430",
+                        darkcolor="#1f2430")
+        style.map("Dark.Vertical.TScrollbar",
+                  background=[("active", "#3a4659"), ("pressed", "#6c7d93")])
+                        
+        scroll_y = ttk.Scrollbar(txt_frame, orient="vertical", command=txt_tb.yview, style="Dark.Vertical.TScrollbar")
         
-        btn_frame = tk.Frame(crash_win, bg="#07080a")
-        btn_frame.pack(fill="x", pady=15, padx=20)
+        def scroll_set(first, last):
+            first, last = float(first), float(last)
+            if first <= 0.0 and last >= 1.0:
+                scroll_y.grid_forget()
+            else:
+                scroll_y.grid(row=0, column=1, sticky="ns")
+            scroll_y.set(first, last)
+            
+        txt_tb.config(yscrollcommand=scroll_set)
         
         def copy_to_clipboard():
             crash_win.clipboard_clear()
@@ -86,6 +125,67 @@ def show_crash_dialog(tb_text):
             crash_win.destroy()
             os._exit(1)
             
+        import queue
+        crash_queue = queue.Queue()
+        
+        def poll_crash_queue():
+            try:
+                while True:
+                    fn, args, kwargs = crash_queue.get_nowait()
+                    try:
+                        fn(*args, **kwargs)
+                    except Exception:
+                        pass
+                    crash_queue.task_done()
+            except queue.Empty:
+                pass
+            crash_win.after(50, poll_crash_queue)
+            
+        crash_win.after(0, poll_crash_queue)
+
+        def send_report():
+            btn_send.config(text="Sending Report...", fg=ACCENT_GOLD)
+            crash_win.update()
+            
+            log_data = ""
+            try:
+                if os.path.exists(_log_path):
+                    with open(_log_path, "r", encoding="utf-8") as lf:
+                        log_data = lf.read()
+            except Exception:
+                pass
+                
+            def perform_send():
+                import urllib.request
+                import json
+                
+                payload = {
+                    "version": __version__,
+                    "traceback": tb_text,
+                    "log_data": log_data
+                }
+                
+                try:
+                    data_bytes = json.dumps(payload).encode('utf-8')
+                    req = urllib.request.Request(
+                        f"{SUGGESTIONS_SERVER_URL}/crashes",
+                        data=data_bytes,
+                        headers={
+                            "Content-Type": "application/json",
+                            "User-Agent": "RBWR-Overlay-Client"
+                        },
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        if resp.status == 200:
+                            crash_queue.put((lambda: btn_send.config(text="Report Sent!", fg=ACCENT_GREEN), (), {}))
+                        else:
+                            crash_queue.put((lambda: btn_send.config(text="Send Failed!", fg=ACCENT_RED), (), {}))
+                except Exception:
+                    crash_queue.put((lambda: btn_send.config(text="Send Failed!", fg=ACCENT_RED), (), {}))
+                    
+            threading.Thread(target=perform_send, daemon=True).start()
+
         btn_copy = tk.Label(btn_frame, text="Copy Traceback", bg="#11141a", fg="#00f0ff", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
         btn_copy.pack(side="left", padx=3)
         btn_copy.bind("<Button-1>", lambda e: copy_to_clipboard())
@@ -93,10 +193,10 @@ def show_crash_dialog(tb_text):
         btn_issue = tk.Label(btn_frame, text="Report on GitHub", bg="#11141a", fg="#ffaa00", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
         btn_issue.pack(side="left", padx=3)
         btn_issue.bind("<Button-1>", lambda e: open_github())
-        
-        btn_dismiss = tk.Label(btn_frame, text="Continue", bg="#11141a", fg="#39ff14", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
-        btn_dismiss.pack(side="right", padx=3)
-        btn_dismiss.bind("<Button-1>", lambda e: crash_win.destroy())
+
+        btn_send = tk.Label(btn_frame, text="Send Report (Anon)", bg="#11141a", fg="#00f0ff", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
+        btn_send.pack(side="left", padx=3)
+        btn_send.bind("<Button-1>", lambda e: send_report())
 
         btn_close = tk.Label(btn_frame, text="Exit App", bg="#11141a", fg="#ff003c", font=("Segoe UI", 8, "bold"), bd=1, relief="solid", padx=10, pady=6, cursor="hand2")
         btn_close.pack(side="right", padx=3)
@@ -301,9 +401,36 @@ class Calculator:
 
 
 class OverlayApp:
+    def poll_gui_queue(self):
+        try:
+            while True:
+                fn, args, kwargs = self.gui_queue.get_nowait()
+                try:
+                    fn(*args, **kwargs)
+                except Exception as e:
+                    log.error(f"Error in queue callback: {e}")
+                self.gui_queue.task_done()
+        except queue.Empty:
+            pass
+        self.root.after(50, self.poll_gui_queue)
+
+    def run_on_main_thread(self, fn, *args, **kwargs):
+        if threading.current_thread() is threading.main_thread():
+            fn(*args, **kwargs)
+        else:
+            self.gui_queue.put((fn, args, kwargs))
+
+    def _sync_hud_scan(self):
+        self.enable_hud_scan = self.var_hud_scan.get()
+
+    def _sync_topmost_on_roblox(self):
+        self.topmost_on_roblox = self.var_topmost_on_roblox.get()
+
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.withdraw()
+        self.gui_queue = queue.Queue()
+        self.poll_gui_queue()
         self.root.title(f"RBWR APR Calculator v{__version__}")
         
         # Load saved settings
@@ -361,8 +488,12 @@ class OverlayApp:
         self.var_usage = tk.StringVar(value=f"{self.calc.usage:.2f}")
         self.var_demand.trace_add("write", lambda name, index, mode: self.on_input_update("demand"))
         self.var_rtp.trace_add("write", lambda name, index, mode: self.on_input_update("rtp"))
-        self.var_hud_scan = tk.BooleanVar(value=settings.get("enable_hud_scan", True))
-        self.var_topmost_on_roblox = tk.BooleanVar(value=settings.get("topmost_on_roblox", True))
+        self.enable_hud_scan = settings.get("enable_hud_scan", True)
+        self.topmost_on_roblox = settings.get("topmost_on_roblox", True)
+        self.var_hud_scan = tk.BooleanVar(value=self.enable_hud_scan)
+        self.var_topmost_on_roblox = tk.BooleanVar(value=self.topmost_on_roblox)
+        self.var_hud_scan.trace_add("write", lambda *args: self._sync_hud_scan())
+        self.var_topmost_on_roblox.trace_add("write", lambda *args: self._sync_topmost_on_roblox())
         self.var_compact_menu = tk.BooleanVar(value=self.is_compact)
         self.var_topmost_menu = tk.BooleanVar(value=self.is_topmost)
         self.skipped_version = settings.get("skipped_version", "")
@@ -789,8 +920,8 @@ class OverlayApp:
                 pystray.MenuItem("Show / Restore", lambda icon, item: self.restore_window(), default=True),
                 pystray.MenuItem("Compact Mode", lambda icon, item: self.toggle_compact(), checked=lambda item: self.is_compact),
                 pystray.MenuItem("Always on Top", lambda icon, item: self.toggle_topmost(), checked=lambda item: self.is_topmost),
-                pystray.MenuItem("Topmost on Roblox", lambda icon, item: self.toggle_topmost_on_roblox(), checked=lambda item: self.var_topmost_on_roblox.get()),
-                pystray.MenuItem("Scan HUD First", lambda icon, item: self.toggle_hud_scan_setting(), checked=lambda item: self.var_hud_scan.get()),
+                pystray.MenuItem("Topmost on Roblox", lambda icon, item: self.toggle_topmost_on_roblox(), checked=lambda item: self.topmost_on_roblox),
+                pystray.MenuItem("Scan HUD First", lambda icon, item: self.toggle_hud_scan_setting(), checked=lambda item: self.enable_hud_scan),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", lambda icon, item: self.quit_app())
             )
@@ -966,7 +1097,7 @@ class OverlayApp:
             self.log_diag(f"Init fail: {e}", "error")
         finally:
             self.ocr_initializing = False
-            self.root.after(0, self.update_scan_button_styles)
+            self.run_on_main_thread(self.update_scan_button_styles)
 
     def toggle_auto_scan(self):
         if not HAS_OCR:
@@ -1050,7 +1181,7 @@ class OverlayApp:
                 success = self.perform_screen_scan()
                 if success:
                     self.auto_scan_active = False
-                    self.root.after(0, self.update_scan_button_styles)
+                    self.run_on_main_thread(self.update_scan_button_styles)
             time.sleep(1.0)
 
     def start_hotkey_listener(self):
@@ -1102,7 +1233,7 @@ class OverlayApp:
         while self.hotkey_thread_active:
             if user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1): # PM_REMOVE = 1
                 if msg.message == 0x0312:  # WM_HOTKEY
-                    self.root.after(0, self.toggle_auto_scan)
+                    self.run_on_main_thread(self.toggle_auto_scan)
                 user32.TranslateMessage(ctypes.byref(msg))
                 user32.DispatchMessageW(ctypes.byref(msg))
             time.sleep(0.05)
@@ -1171,7 +1302,7 @@ class OverlayApp:
             from PIL import ImageGrab
 
             found = False
-            if self.var_hud_scan.get():
+            if self.enable_hud_scan:
                 crop_w = 800
                 crop_h = 320
                 x_offset = 20
@@ -1299,21 +1430,21 @@ class OverlayApp:
                         detected_demand = val1
                 
                 self.log_diag(f"Matched Net: D({detected_demand}) (Unit: {active_unit})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(active_unit, detected_demand))
+                self.run_on_main_thread(lambda: self.apply_auto_telemetry(active_unit, detected_demand))
                 return True
 
             match_fallback = re.search(r'(?i)Demand(\d+)', cleaned)
             if match_fallback:
                 detected_demand = float(clean_demand_string(match_fallback.group(1)))
                 self.log_diag(f"Matched Fallback: D({detected_demand}) (Unit: {detected_unit})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
+                self.run_on_main_thread(lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True
 
             match_generic = re.search(r'(?i)(?:demand|load|dem)[A-Za-z]*(\d+)', cleaned)
             if match_generic:
                 detected_demand = float(clean_demand_string(match_generic.group(1)))
                 self.log_diag(f"Matched Generic: D({detected_demand}) (Unit: {detected_unit})", "success")
-                self.root.after(0, lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
+                self.run_on_main_thread(lambda: self.apply_auto_telemetry(detected_unit, detected_demand))
                 return True
 
             snippet = (full_text[:20] + "...") if len(full_text) > 20 else full_text
@@ -1352,7 +1483,7 @@ class OverlayApp:
                 color = ACCENT_GOLD
             elif level == "info":
                 color = ACCENT_CYAN
-            self.root.after(0, lambda: self.lbl_debug.config(text=f"[ OCR: {message.upper()} ]", fg=color))
+            self.run_on_main_thread(lambda: self.lbl_debug.config(text=f"[ OCR: {message.upper()} ]", fg=color))
 
     def update_unit_ui_state(self):
         if hasattr(self, 'btn_u1') and hasattr(self, 'btn_u2') and self.btn_u1.winfo_exists() and self.btn_u2.winfo_exists():
@@ -1686,7 +1817,7 @@ class OverlayApp:
             if self.is_topmost:
                 if not self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", True)
-            elif self.var_topmost_on_roblox.get():
+            elif self.topmost_on_roblox:
                 hwnd = ctypes.windll.user32.GetForegroundWindow()
                 if hwnd:
                     buffer_len = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
@@ -1751,7 +1882,7 @@ class OverlayApp:
                                 
                                 if download_url:
                                     log.info(f"Update check: New update {latest_version} is available.")
-                                    self.root.after(0, lambda: self.show_update_dialog(latest_version, release_notes, filename, download_url))
+                                    self.run_on_main_thread(lambda: self.show_update_dialog(latest_version, release_notes, filename, download_url))
                                 else:
                                     log.warning("Update check: Found update but no .exe asset in the release.")
                             else:
@@ -2037,13 +2168,13 @@ class OverlayApp:
                                 lbl_status.config(text="Feedback submitted successfully!", fg=ACCENT_GREEN)
                                 txt_body.delete("1.0", tk.END)
                                 popup.after(1500, popup.destroy)
-                            popup.after(0, success_ui)
+                            self.run_on_main_thread(success_ui)
                         else:
                             def fail_ui():
                                 nonlocal submit_in_progress
                                 lbl_status.config(text=f"Error: Server returned status {resp.status}", fg=ACCENT_RED)
                                 submit_in_progress = False
-                            popup.after(0, fail_ui)
+                            self.run_on_main_thread(fail_ui)
                 except urllib.error.HTTPError as he:
                     # Read the error body synchronously on the background thread
                     reason = he.reason
@@ -2057,13 +2188,13 @@ class OverlayApp:
                         nonlocal submit_in_progress
                         lbl_status.config(text=f"Error: {detail}", fg=ACCENT_RED)
                         submit_in_progress = False
-                    popup.after(0, http_err_ui)
+                    self.run_on_main_thread(http_err_ui)
                 except Exception as ex:
                     def err_ui():
                         nonlocal submit_in_progress
                         lbl_status.config(text="Error: Connection to server failed.", fg=ACCENT_RED)
                         submit_in_progress = False
-                    popup.after(0, err_ui)
+                    self.run_on_main_thread(err_ui)
                     
             threading.Thread(target=run_submit, daemon=True).start()
 
@@ -2160,22 +2291,23 @@ class OverlayApp:
                         with open(new_exe_path, "wb") as f:
                             f.write(response.read())
                 
-                lbl_status.config(text="⚡ REBOOTING OVERLAY...", fg=ACCENT_GREEN)
-                lbl_sub.config(text="Deleting old version & starting new one...")
-                loading.update()
-                
                 threading.Event().wait(1.0)
                 
-                cmd_script = f'timeout /t 2 /nobreak && del "{current_exe}" && start "" "{new_exe_path}"'
-                subprocess.Popen(f'cmd.exe /c {cmd_script}', shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                
-                self.root.after(0, self.quit_app)
+                def update_success_ui_and_reboot():
+                    lbl_status.config(text="⚡ REBOOTING OVERLAY...", fg=ACCENT_GREEN)
+                    lbl_sub.config(text="Deleting old version & starting new one...")
+                    loading.update()
+                    cmd_script = f'timeout /t 2 /nobreak && del "{current_exe}" && start "" "{new_exe_path}"'
+                    subprocess.Popen(f'cmd.exe /c {cmd_script}', shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                    self.quit_app()
+
+                self.run_on_main_thread(update_success_ui_and_reboot)
             except Exception as err:
                 log.error(f"Self-update failed: {err}")
-                self.root.after(0, lambda: [
-                    loading.destroy(),
+                def handle_err():
+                    loading.destroy()
                     messagebox.showerror("Update Error", f"Failed to execute self-update:\n{err}")
-                ])
+                self.run_on_main_thread(handle_err)
                 
         threading.Thread(target=do_download, daemon=True).start()
 
@@ -2288,5 +2420,6 @@ class OverlayApp:
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.withdraw()
     app = OverlayApp(root)
     root.mainloop()

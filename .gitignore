@@ -6,9 +6,12 @@ settings.json
 *test.py
 verify_calculations.py
 .env
-banned_ips.json
-suggestions.json
+
 server/files/dev
+server/crashes.json
+server/suggestions.json
+server/banned_ips.json
+
 venv
 *build
 

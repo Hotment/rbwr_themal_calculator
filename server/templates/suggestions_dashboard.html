@@ -1,38 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>APRM Overlay Admin - Feedback & Suggestions Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #07080a; font-family: 'Consolas', 'Segoe UI', monospace; color: #ffffff; }
-        .cyber-panel { background-color: #11141a; border: 1px solid #1a202c; }
-        .glow-cyan { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0, 240, 255, 0.25); }
-        .accent-cyan { color: #00f0ff; }
-        .accent-green { color: #39ff14; }
-        .accent-red { color: #ff003c; }
-        .accent-gold { color: #ffaa00; }
-        .btn-accent { border: 1px solid #00f0ff; color: #00f0ff; background-color: transparent; transition: all 0.2s; }
-        .btn-accent:hover { background-color: #00f0ff; color: #07080a; }
+        body {
+            background-color: #07080a;
+            font-family: 'Consolas', 'Segoe UI', monospace;
+            color: #ffffff;
+        }
+
+        .cyber-panel {
+            background-color: #11141a;
+            border: 1px solid #1a202c;
+        }
+
+        .glow-cyan {
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+        }
+
+        .accent-cyan {
+            color: #00f0ff;
+        }
+
+        .accent-green {
+            color: #39ff14;
+        }
+
+        .accent-red {
+            color: #ff003c;
+        }
+
+        .accent-gold {
+            color: #ffaa00;
+        }
+
+        .btn-accent {
+            border: 1px solid #00f0ff;
+            color: #00f0ff;
+            background-color: transparent;
+            transition: all 0.2s;
+        }
+
+        .btn-accent:hover {
+            background-color: #00f0ff;
+            color: #07080a;
+        }
     </style>
 </head>
+
 <body class="p-6 md:p-10">
     <div class="max-w-6xl mx-auto">
-        <!-- Header -->
         <header class="cyber-panel glow-cyan p-6 rounded mb-8 flex flex-col md:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold tracking-widest accent-cyan">[ // FEEDBACK & SUGGESTIONS CONTROL CENTER ]</h1>
+                <h1 id="main-dashboard-title" class="text-2xl font-bold tracking-widest accent-cyan">[ // FEEDBACK &
+                    SUGGESTIONS CONTROL CENTER ]</h1>
                 <p class="text-xs text-slate-500 mt-1">Logged in as __USERNAME__ // Terminal session active</p>
             </div>
             <div class="mt-4 md:mt-0 flex gap-4 text-xs font-bold text-slate-400">
                 <div>ACTIVE BANS: <span id="stat-active-bans" class="accent-red">0</span></div>
-                <div>TOTAL ENTRIES: <span id="stat-total-entries" class="accent-cyan">0</span></div>
+                <div><span id="stat-total-label">TOTAL SUGGESTIONS</span>: <span id="stat-total-entries"
+                        class="accent-cyan">0</span></div>
             </div>
         </header>
 
+        <div class="cyber-panel p-4 rounded mb-8 flex gap-4 text-xs font-bold">
+            <button onclick="switchView('suggestions')" id="view-suggestions-btn"
+                class="px-4 py-2 bg-[#00f0ff] text-[#07080a] hover:bg-[#00f0ff]/80 transition rounded uppercase">Suggestions</button>
+            <button onclick="switchView('crashes')" id="view-crashes-btn"
+                class="px-4 py-2 border border-slate-700 text-slate-400 hover:text-white transition rounded uppercase">Crash
+                Reports</button>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- Sidebar / Active Bans -->
             <div class="lg:col-span-1 flex flex-col gap-6">
                 <div class="cyber-panel p-5 rounded border border-slate-800">
                     <h2 class="text-sm font-bold tracking-wider accent-gold mb-4">[ BANNED IP INDEX ]</h2>
@@ -42,36 +86,43 @@
                 </div>
             </div>
 
-            <!-- Main Feedback & Suggestions Feed -->
             <div class="lg:col-span-3 flex flex-col gap-6">
-                <!-- Filter Tabs -->
-                <div class="flex border-b border-slate-800 gap-2 text-xs font-bold">
-                    <button onclick="filterStatus('all')" id="tab-all" class="px-4 py-2 text-white border-b-2 border-[#00f0ff] uppercase">All</button>
-                    <button onclick="filterStatus('pending')" id="tab-pending" class="px-4 py-2 text-slate-400 hover:text-white uppercase">Pending</button>
-                    <button onclick="filterStatus('considering')" id="tab-considering" class="px-4 py-2 text-slate-400 hover:text-white uppercase">Considering</button>
-                    <button onclick="filterStatus('accepted')" id="tab-accepted" class="px-4 py-2 text-slate-400 hover:text-white uppercase">Accepted</button>
-                    <button onclick="filterStatus('declined')" id="tab-declined" class="px-4 py-2 text-slate-400 hover:text-white uppercase">Declined</button>
+                <div id="suggestions-filter-tabs" class="flex border-b border-slate-800 gap-2 text-xs font-bold">
+                    <button onclick="filterStatus('all')" id="tab-all"
+                        class="px-4 py-2 text-white border-b-2 border-[#00f0ff] uppercase">All</button>
+                    <button onclick="filterStatus('pending')" id="tab-pending"
+                        class="px-4 py-2 text-slate-400 hover:text-white uppercase">Pending</button>
+                    <button onclick="filterStatus('considering')" id="tab-considering"
+                        class="px-4 py-2 text-slate-400 hover:text-white uppercase">Considering</button>
+                    <button onclick="filterStatus('accepted')" id="tab-accepted"
+                        class="px-4 py-2 text-slate-400 hover:text-white uppercase">Accepted</button>
+                    <button onclick="filterStatus('declined')" id="tab-declined"
+                        class="px-4 py-2 text-slate-400 hover:text-white uppercase">Declined</button>
                 </div>
 
-                <!-- Feed Entries -->
                 <div id="feed-container" class="flex flex-col gap-4">
                     <p class="text-sm text-slate-500 italic">Loading suggestions...</p>
+                </div>
+
+                <div id="crashes-container" class="flex flex-col gap-4 hidden">
+                    <p class="text-sm text-slate-500 italic">Loading crash reports...</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Ban Overlay Modal -->
     <div id="ban-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="cyber-panel glow-cyan p-6 rounded max-w-sm w-full flex flex-col gap-4">
             <h3 class="text-sm font-bold tracking-widest accent-red">[ // ENFORCE IP BAN PROTOCOL ]</h3>
             <div class="flex flex-col gap-1 text-xs">
                 <label class="text-slate-500">TARGET IP ADDRESS</label>
-                <input type="text" id="ban-ip-field" readonly class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
+                <input type="text" id="ban-ip-field" readonly
+                    class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
             </div>
             <div class="flex flex-col gap-1 text-xs">
                 <label class="text-slate-500">BAN EXPIRATION / DURATION</label>
-                <select id="ban-duration" class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
+                <select id="ban-duration"
+                    class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
                     <option value="60">1 Hour</option>
                     <option value="1440">24 Hours</option>
                     <option value="10080">7 Days</option>
@@ -80,19 +131,53 @@
             </div>
             <div class="flex flex-col gap-1 text-xs">
                 <label class="text-slate-500">REASON FOR PROHIBITION</label>
-                <input type="text" id="ban-reason" placeholder="e.g. Spammed submission logs" class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
+                <input type="text" id="ban-reason" placeholder="e.g. Spammed submission logs"
+                    class="bg-[#0b0d12] border border-slate-800 p-2 rounded text-slate-300 outline-none">
             </div>
             <div class="flex gap-3 justify-end text-xs font-bold mt-2">
-                <button onclick="closeBanModal()" class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded uppercase">Cancel</button>
-                <button onclick="submitBan()" class="px-4 py-2 bg-red-950 text-red-500 hover:bg-red-900 hover:text-white rounded uppercase">Enforce Ban</button>
+                <button onclick="closeBanModal()"
+                    class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded uppercase">Cancel</button>
+                <button onclick="submitBan()"
+                    class="px-4 py-2 bg-red-950 text-red-500 hover:bg-red-900 hover:text-white rounded uppercase">Enforce
+                    Ban</button>
             </div>
         </div>
     </div>
 
-    <!-- JS Dashboard Logic -->
     <script>
+        let activeView = 'suggestions';
+        let latestData = null;
         let currentFilter = 'all';
         let bannedIps = {};
+
+        function switchView(view) {
+            activeView = view;
+            const sugBtn = document.getElementById('view-suggestions-btn');
+            const crashBtn = document.getElementById('view-crashes-btn');
+            const filterTabs = document.getElementById('suggestions-filter-tabs');
+            const feedContainer = document.getElementById('feed-container');
+            const crashesContainer = document.getElementById('crashes-container');
+            const mainTitle = document.getElementById('main-dashboard-title');
+
+            if (view === 'suggestions') {
+                sugBtn.className = 'px-4 py-2 bg-[#00f0ff] text-[#07080a] hover:bg-[#00f0ff]/80 transition rounded uppercase';
+                crashBtn.className = 'px-4 py-2 border border-slate-700 text-slate-400 hover:text-white transition rounded uppercase';
+                filterTabs.classList.remove('hidden');
+                feedContainer.classList.remove('hidden');
+                crashesContainer.classList.add('hidden');
+                mainTitle.innerText = '[ // FEEDBACK & SUGGESTIONS CONTROL CENTER ]';
+            } else {
+                crashBtn.className = 'px-4 py-2 bg-[#00f0ff] text-[#07080a] hover:bg-[#00f0ff]/80 transition rounded uppercase';
+                sugBtn.className = 'px-4 py-2 border border-slate-700 text-slate-400 hover:text-white transition rounded uppercase';
+                filterTabs.classList.add('hidden');
+                feedContainer.classList.add('hidden');
+                crashesContainer.classList.remove('hidden');
+                mainTitle.innerText = '[ // APPLICATION CRASH LOG DECK ]';
+            }
+            if (latestData) {
+                updateStats(latestData);
+            }
+        }
 
         function filterStatus(status) {
             currentFilter = status;
@@ -103,7 +188,7 @@
             });
             document.getElementById('tab-' + status).classList.add('border-b-2', 'border-[#00f0ff]', 'text-white');
             document.getElementById('tab-' + status).classList.remove('text-slate-400');
-            
+
             applyFilter();
         }
 
@@ -123,10 +208,12 @@
                 const response = await fetch('/admin/suggestions/data');
                 if (response.ok) {
                     const data = await response.json();
+                    latestData = data;
                     bannedIps = data.banned_ips;
                     updateStats(data);
                     renderBannedIps(data.banned_ips);
                     renderSuggestions(data.suggestions);
+                    renderCrashes(data.crashes);
                 }
             } catch (err) {
                 console.error('Error fetching dashboard data:', err);
@@ -135,9 +222,15 @@
 
         function updateStats(data) {
             const activeBans = Object.keys(data.banned_ips).length;
-            const totalEntries = data.suggestions.length;
             document.getElementById('stat-active-bans').innerText = activeBans;
-            document.getElementById('stat-total-entries').innerText = totalEntries;
+
+            if (activeView === 'suggestions') {
+                document.getElementById('stat-total-label').innerText = 'TOTAL SUGGESTIONS';
+                document.getElementById('stat-total-entries').innerText = data.suggestions.length;
+            } else {
+                document.getElementById('stat-total-label').innerText = 'TOTAL CRASH REPORTS';
+                document.getElementById('stat-total-entries').innerText = data.crashes.length;
+            }
         }
 
         function renderBannedIps(bans) {
@@ -147,7 +240,7 @@
                 container.innerHTML = '<p class="text-xs text-slate-500 italic">No IPs currently banned.</p>';
                 return;
             }
-            
+
             let html = '';
             for (const ip of ipList) {
                 const info = bans[ip];
@@ -177,18 +270,18 @@
             for (const s of suggestions) {
                 const timeStr = (s.timestamp || '').substring(0, 19).replace('T', ' ');
                 const isBanned = s.ip in bannedIps;
-                
+
                 let badgeClass = '';
                 if (s.status === 'pending') badgeClass = 'bg-amber-950 text-amber-400';
                 else if (s.status === 'considering') badgeClass = 'bg-blue-950 text-blue-400';
                 else if (s.status === 'accepted') badgeClass = 'bg-emerald-950 text-emerald-400';
                 else if (s.status === 'declined') badgeClass = 'bg-rose-950 text-rose-400';
 
-                const banBtn = isBanned 
+                const banBtn = isBanned
                     ? `<button onclick="unbanIP('${s.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded font-bold uppercase">Unban IP</button>`
                     : `<button onclick="openBanModal('${s.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded font-bold uppercase">Ban IP</button>`;
 
-                const bannedTag = isBanned 
+                const bannedTag = isBanned
                     ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
                     : '';
 
@@ -226,6 +319,64 @@
             applyFilter();
         }
 
+        function renderCrashes(crashes) {
+            const container = document.getElementById('crashes-container');
+            if (crashes.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 italic">No crash reports submitted yet.</p>';
+                return;
+            }
+
+            let html = '';
+            for (const c of crashes) {
+                const timeStr = (c.timestamp || '').substring(0, 19).replace('T', ' ');
+                const isBanned = c.ip in bannedIps;
+
+                const banBtn = isBanned
+                    ? `<button onclick="unbanIP('${c.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded font-bold uppercase">Unban IP</button>`
+                    : `<button onclick="openBanModal('${c.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded font-bold uppercase">Ban IP</button>`;
+
+                const bannedTag = isBanned
+                    ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
+                    : '';
+
+                html += `
+                    <div class="cyber-panel p-5 rounded border border-slate-800 flex flex-col gap-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-bold text-rose-500">[ CRASH #${c.id} ]</span>
+                                <span class="text-[10px] text-slate-500">${timeStr}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-rose-950 text-rose-400">v${escapeHtml(c.version)}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 flex items-center gap-2">
+                                <span>Sender IP: <span class="font-mono text-slate-300">${c.ip}</span></span>
+                                ${bannedTag}
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-3">
+                            <details class="bg-[#0b0d12] border border-slate-900 rounded p-3 cursor-pointer">
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Traceback Exception Details</summary>
+                                <pre class="text-xs text-rose-500 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded border border-rose-950/40 select-text cursor-text">${escapeHtml(c.traceback)}</pre>
+                            </details>
+                            
+                            <details class="bg-[#0b0d12] border border-slate-900 rounded p-3 cursor-pointer">
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Diagnostics Log Data</summary>
+                                <pre class="text-xs text-slate-300 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded border border-slate-800 select-text cursor-text">${escapeHtml(c.log_data || 'No logs captured.')}</pre>
+                            </details>
+                        </div>
+                        
+                        <!-- Action Controls -->
+                        <div class="flex justify-end items-center gap-4 mt-1 border-t border-slate-900 pt-3">
+                            <div>
+                                ${banBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             const map = {
@@ -235,7 +386,7 @@
                 '"': '&quot;',
                 "'": '&#039;'
             };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+            return text.replace(/[&<>"']/g, function (m) { return map[m]; });
         }
 
         async function updateStatus(id, status) {
@@ -285,9 +436,9 @@
             const ip = document.getElementById('ban-ip-field').value;
             const durationVal = document.getElementById('ban-duration').value;
             const reason = document.getElementById('ban-reason').value;
-            
+
             const duration_minutes = durationVal === 'permanent' ? null : parseInt(durationVal);
-            
+
             try {
                 const response = await fetch('/admin/suggestions/ban', {
                     method: 'POST',
@@ -306,10 +457,9 @@
             }
         }
 
-        // Initial load
         fetchDashboardData();
-        // Poll every 5 seconds
         setInterval(fetchDashboardData, 5000);
     </script>
 </body>
+
 </html>

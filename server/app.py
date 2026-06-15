@@ -28,6 +28,7 @@ FILES_DIR = os.path.join(BASE_DIR, "files")
 VERSIONS_FILE = os.path.join(BASE_DIR, "versions.json")
 SUGGESTIONS_FILE = os.path.join(BASE_DIR, "suggestions.json")
 BANNED_FILE = os.path.join(BASE_DIR, "banned_ips.json")
+CRASHES_FILE = os.path.join(BASE_DIR, "crashes.json")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
@@ -99,6 +100,19 @@ def save_suggestions(data):
     with open(SUGGESTIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
+def load_crashes():
+    if not os.path.exists(CRASHES_FILE):
+        return {"crashes": []}
+    with open(CRASHES_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return {"crashes": []}
+
+def save_crashes(data):
+    with open(CRASHES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
 def load_banned_ips():
     if not os.path.exists(BANNED_FILE):
         return {"banned": {}}
@@ -143,6 +157,11 @@ class SuggestionPayload(BaseModel):
     name: str = Field(default="", max_length=50)
     suggestion: str = Field(..., max_length=2000)
     anonymous: bool
+
+class CrashPayload(BaseModel):
+    version: str = Field(..., max_length=20)
+    traceback: str = Field(..., max_length=20000)
+    log_data: str = Field(default="", max_length=50000)
 
 class StatusUpdatePayload(BaseModel):
     id: int
@@ -266,6 +285,31 @@ def submit_suggestion(payload: SuggestionPayload, request: Request):
     save_suggestions(data)
     return {"message": "Feedback submitted successfully.", "id": new_id}
 
+@app.post("/crashes", tags=["Crash Reports"])
+def submit_crash(payload: CrashPayload, request: Request):
+    ip = request.client.host if request.client else "unknown"
+    if is_ip_banned(ip):
+        raise HTTPException(status_code=403, detail="Your IP is banned.")
+    
+    data = load_crashes()
+    crashes = data.setdefault("crashes", [])
+    
+    new_id = 1
+    if crashes:
+        new_id = max(c.get("id", 0) for c in crashes) + 1
+        
+    new_crash = {
+        "id": new_id,
+        "version": payload.version.strip(),
+        "traceback": payload.traceback.strip(),
+        "log_data": payload.log_data.strip(),
+        "ip": ip,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    crashes.append(new_crash)
+    save_crashes(data)
+    return {"message": "Crash report submitted successfully.", "id": new_id}
+
 
 # --- Admin API / Dashboard ---
 
@@ -317,9 +361,14 @@ def get_suggestions_data(username: str = Depends(authenticate_admin)):
     ban_data = load_banned_ips()
     banned_ips = ban_data.get("banned", {})
     
+    crash_data = load_crashes()
+    crashes = crash_data.get("crashes", [])
+    crashes = sorted(crashes, key=lambda c: c.get("timestamp", ""), reverse=True)
+    
     return {
         "suggestions": suggestions,
-        "banned_ips": banned_ips
+        "banned_ips": banned_ips,
+        "crashes": crashes
     }
 
 
