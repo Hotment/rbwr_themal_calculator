@@ -7,7 +7,7 @@ settings.json
 verify_calculations.py
 .env
 
-server/files/dev
+server/files
 server/crashes.json
 server/suggestions.json
 server/banned_ips.json
