@@ -581,6 +581,7 @@ class OverlayApp:
             log.warning(f"Failed to set WS_EX_APPWINDOW: {e}")
 
     def create_widgets(self):
+        self.telemetry_frame = None
         for child in self.root.winfo_children():
             if child != self.context_menu:
                 child.destroy()
@@ -867,21 +868,21 @@ class OverlayApp:
         lbl_arrow.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
         # Stack RTP and Flow vertically to save horizontal space
-        telemetry_frame = tk.Frame(compact_frame, bg=BG_HEADER)
-        telemetry_frame.pack(side="left", padx=5)
-        self.make_draggable(telemetry_frame)
-        telemetry_frame.bind("<Double-Button-1>", lambda e: self.toggle_compact())
+        self.telemetry_frame = tk.Frame(compact_frame, bg=BG_HEADER)
+        self.telemetry_frame.place(x=288, rely=0.5, anchor="w")
+        self.make_draggable(self.telemetry_frame)
+        self.telemetry_frame.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
         unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
-        self.lbl_compact_rtp = tk.Label(telemetry_frame, text=f"0.0% {unit_suffix}", bg=BG_HEADER, fg=ACCENT_CYAN,
+        self.lbl_compact_rtp = tk.Label(self.telemetry_frame, text=f"0.0% {unit_suffix}", bg=BG_HEADER, fg=ACCENT_CYAN,
                                          font=("Consolas", 10, "bold"))
-        self.lbl_compact_rtp.pack(side="top", anchor="w")
+        self.lbl_compact_rtp.pack(side="top", anchor="center")
         self.make_draggable(self.lbl_compact_rtp)
         self.lbl_compact_rtp.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
-        self.lbl_compact_flow = tk.Label(telemetry_frame, text="[0 kg/s]", bg=BG_HEADER, fg=TEXT_MUTED,
+        self.lbl_compact_flow = tk.Label(self.telemetry_frame, text="[0 kg/s]", bg=BG_HEADER, fg=TEXT_MUTED,
                                          font=("Consolas", 8))
-        self.lbl_compact_flow.pack(side="top", anchor="w")
+        self.lbl_compact_flow.pack(side="top", anchor="center")
         self.make_draggable(self.lbl_compact_flow)
         self.lbl_compact_flow.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
@@ -2400,10 +2401,14 @@ class OverlayApp:
                 self.lbl_neon_sub.config(text="⚡ APRM REACTOR POWER STATUS", bg=BG_CARD, fg=TEXT_MUTED)
         else:
             if thermal > limit:
-                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% {unit_suffix} ⚠️", fg=ACCENT_RED)
+                self.lbl_compact_rtp.config(text=f"{thermal:.1f}% {unit_suffix}", fg=ACCENT_RED)
             else:
                 self.lbl_compact_rtp.config(text=f"{thermal:.1f}% {unit_suffix}", fg=ACCENT_CYAN)
             self.lbl_compact_flow.config(text=f"[{int(flow)} kg/s]", fg=TEXT_MUTED)
+            
+            if hasattr(self, 'telemetry_frame') and self.telemetry_frame and self.telemetry_frame.winfo_exists():
+                x_pos = 280 if thermal >= 100 else 288
+                self.telemetry_frame.place(x=x_pos)
 
     def show_error_state(self):
         if not self.is_compact:
@@ -2416,6 +2421,8 @@ class OverlayApp:
         else:
             self.lbl_compact_rtp.config(text="ERR", fg=ACCENT_RED)
             self.lbl_compact_flow.config(text="[---]", fg=ACCENT_RED)
+            if hasattr(self, 'telemetry_frame') and self.telemetry_frame and self.telemetry_frame.winfo_exists():
+                self.telemetry_frame.place(x=288)
 
 
 if __name__ == "__main__":
