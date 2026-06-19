@@ -458,6 +458,93 @@ class Calculator:
 
 
 class OverlayApp:
+    def show_custom_message(self, title, message, is_error=False):
+        if hasattr(self, 'custom_message_window') and self.custom_message_window and self.custom_message_window.winfo_exists():
+            try:
+                self.custom_message_window.destroy()
+            except Exception:
+                pass
+
+        popup = tk.Toplevel(self.root)
+        self.custom_message_window = popup
+        popup.transient(self.root)
+        popup.title(title)
+        
+        accent_color = ACCENT_RED if is_error else ACCENT_CYAN
+        popup.configure(bg=BG_CARD, highlightbackground=accent_color, highlightcolor=accent_color, highlightthickness=1)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        
+        w = 360
+        h = 180
+        if len(message) > 150:
+            w = 400
+            h = 240
+
+        x = self.root.winfo_x() + (self.root.winfo_width() - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+        
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        x = max(0, min(x, screen_w - w))
+        y = max(0, min(y, screen_h - h))
+        
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+        
+        drag_data = {"x": 0, "y": 0}
+        def start_drag(event):
+            drag_data["x"] = event.x
+            drag_data["y"] = event.y
+            
+        def do_drag(event):
+            dx = event.x - drag_data["x"]
+            dy = event.y - drag_data["y"]
+            px = popup.winfo_x() + dx
+            py = popup.winfo_y() + dy
+            popup.geometry(f"+{px}+{py}")
+            
+        title_bar = tk.Frame(popup, bg=BG_HEADER, height=30)
+        title_bar.pack(fill="x", side="top")
+        title_bar.bind("<Button-1>", start_drag)
+        title_bar.bind("<B1-Motion>", do_drag)
+        
+        prefix = " ⚠ ERROR" if is_error else " ⚙ INFO"
+        title_lbl = tk.Label(title_bar, text=f"{prefix}: {title.upper()}", bg=BG_HEADER, fg=accent_color,
+                             font=("Consolas", 9, "bold"))
+        title_lbl.pack(side="left", padx=10, pady=5)
+        title_lbl.bind("<Button-1>", start_drag)
+        title_lbl.bind("<B1-Motion>", do_drag)
+        
+        btn_close_top = tk.Label(title_bar, text="✕", bg=BG_HEADER, fg=TEXT_MUTED, width=3, font=("Segoe UI", 11, "bold"), cursor="hand2")
+        btn_close_top.pack(side="right", fill="y")
+        btn_close_top.bind("<Button-1>", lambda e: popup.destroy())
+        btn_close_top.bind("<Enter>", lambda e: btn_close_top.config(bg=ACCENT_RED, fg=TEXT_LIGHT))
+        btn_close_top.bind("<Leave>", lambda e: btn_close_top.config(bg=BG_HEADER, fg=TEXT_MUTED))
+        
+        content_frame = tk.Frame(popup, bg=BG_CARD, padx=20, pady=15)
+        content_frame.pack(fill="both", expand=True)
+        
+        msg_lbl = tk.Label(content_frame, text=message, bg=BG_CARD, fg=TEXT_LIGHT, 
+                           font=("Segoe UI", 9), justify="left", wraplength=w - 40)
+        msg_lbl.pack(anchor="nw", fill="both", expand=True, pady=(0, 15))
+        
+        btn_ok = tk.Label(content_frame, text="OK", bg=BG_MAIN, fg=accent_color,
+                          font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=25, pady=4, cursor="hand2")
+        btn_ok.pack(anchor="se", side="bottom")
+        btn_ok.bind("<Button-1>", lambda e: popup.destroy())
+        btn_ok.bind("<Enter>", lambda e: btn_ok.config(bg=BG_HEADER, fg=TEXT_LIGHT))
+        btn_ok.bind("<Leave>", lambda e: btn_ok.config(bg=BG_MAIN, fg=accent_color))
+        
+        def on_custom_message_destroy(event):
+            if event.widget == popup:
+                self.custom_message_window = None
+                self.update_topmost_state()
+
+        popup.bind("<Destroy>", on_custom_message_destroy)
+        popup.deiconify()
+        popup.lift(self.root)
+        popup.focus_force()
+
     def poll_gui_queue(self):
         try:
             while True:
@@ -537,6 +624,7 @@ class OverlayApp:
         self.suggestions_window = None
         self.update_window = None
         self.loading_window = None
+        self.custom_message_window = None
         
         self._drag_data = {"x": 0, "y": 0}
         
@@ -610,9 +698,11 @@ class OverlayApp:
 
     def show_context_menu(self, event):
         try:
+            self.root.attributes("-topmost", False)
             self.context_menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.context_menu.grab_release()
+            self.root.attributes("-topmost", self.is_topmost)
 
     def setup_app_window_style(self):
         try:
@@ -1046,8 +1136,7 @@ class OverlayApp:
             if os.path.exists(_log_path):
                 os.startfile(_log_path)
             else:
-                from tkinter import messagebox
-                messagebox.showinfo("Log File", f"Log file not found at:\n{_log_path}")
+                self.show_custom_message("Log File", f"Log file not found at:\n{_log_path}")
         except Exception as e:
             log.error(f"Failed to open log file: {e}")
 
@@ -1159,16 +1248,13 @@ class OverlayApp:
 
     def toggle_auto_scan(self):
         if not HAS_OCR:
-            from tkinter import messagebox
-            messagebox.showinfo("Screen Reader", 
-                                "To enable automatic screen scanning, please install the OCR package:\n\n"
-                                "pip install rapidocr-onnxruntime pillow\n\n"
-                                "And compile using compile.bat.")
+            self.show_custom_message("Screen Reader", 
+                                     "To enable automatic screen scanning, please install the OCR package:\n\n"
+                                     "pip install rapidocr-onnxruntime pillow")
             return
 
         if self.ocr_initializing:
-            from tkinter import messagebox
-            messagebox.showinfo("Screen Reader", "Initializing OCR engine models. Please wait a few seconds...")
+            self.show_custom_message("Screen Reader", "Initializing OCR engine models. Please wait a few seconds...")
             return
 
         if not self.ocr_engine:
@@ -1180,8 +1266,7 @@ class OverlayApp:
             except Exception as e:
                 log.error(f"Failed to initialize RapidOCR on retry: {e}")
                 log.error(traceback.format_exc())
-                from tkinter import messagebox
-                messagebox.showerror("Screen Reader", f"Failed to initialize OCR engine models.\n\nError: {e}\n\nCheck rbwr_overlay.log for details.")
+                self.show_custom_message("Screen Reader", f"Failed to initialize OCR engine models.\n\nError: {e}\n\nCheck rbwr_overlay.log for details.", is_error=True)
                 return
 
         self.auto_scan_active = not self.auto_scan_active
@@ -1854,10 +1939,15 @@ class OverlayApp:
             if hasattr(self, 'loading_window') and self.loading_window and self.loading_window.winfo_exists():
                 loading_open = True
 
+            custom_message_open = False
+            if hasattr(self, 'custom_message_window') and self.custom_message_window and self.custom_message_window.winfo_exists():
+                custom_message_open = True
+
             if (settings_open and self.settings_window) or \
                (suggestions_open and self.suggestions_window) or \
                (update_open and self.update_window) or \
-               (loading_open and self.loading_window):
+               (loading_open and self.loading_window) or \
+               (custom_message_open and self.custom_message_window):
                 if self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", False)
 
@@ -1880,6 +1970,11 @@ class OverlayApp:
                     if not self.loading_window.attributes("-topmost"):
                         self.loading_window.attributes("-topmost", True)
                     self.loading_window.lift()
+
+                if custom_message_open and self.custom_message_window:
+                    if not self.custom_message_window.attributes("-topmost"):
+                        self.custom_message_window.attributes("-topmost", True)
+                    self.custom_message_window.lift()
                 return
 
             if self.is_topmost:
@@ -2374,7 +2469,7 @@ class OverlayApp:
                 log.error(f"Self-update failed: {err}")
                 def handle_err():
                     loading.destroy()
-                    messagebox.showerror("Update Error", f"Failed to execute self-update:\n{err}")
+                    self.show_custom_message("Update Error", f"Failed to execute self-update:\n{err}", is_error=True)
                 self.run_on_main_thread(handle_err)
                 
         threading.Thread(target=do_download, daemon=True).start()
