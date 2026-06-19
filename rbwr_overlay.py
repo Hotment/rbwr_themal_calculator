@@ -6,10 +6,11 @@ import os
 import threading
 import logging
 import traceback
+import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.1"
+__version__ = "1.6.2"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -23,13 +24,69 @@ except NameError:
 
 _log_dir = os.path.dirname(os.path.abspath(sys.argv[0])) if _is_compiled else os.path.dirname(os.path.abspath(__file__))
 _log_path = os.path.join(_log_dir, "rbwr_overlay.log")
+_sanitization_mappings = []
+
+def get_sanitization_mappings():
+    mappings = []
+    sources = [
+        ("TEMP", "%temp%"),
+        ("TMP", "%temp%"),
+        ("LOCALAPPDATA", "%localappdata%"),
+        ("APPDATA", "%appdata%"),
+        ("USERPROFILE", "%userprofile%"),
+    ]
+    seen_variants = set()
+    for var_name, placeholder in sources:
+        path = os.environ.get(var_name)
+        if not path:
+            continue
+        variants = [path]
+        if os.name == 'nt':
+            try:
+                import ctypes
+                buf = ctypes.create_unicode_buffer(1024)
+                if ctypes.windll.kernel32.GetShortPathNameW(path, buf, 1024):
+                    short = buf.value
+                    if short not in variants:
+                        variants.append(short)
+            except Exception:
+                pass
+        for var in variants:
+            var = var.rstrip('/\\')
+            if not var or len(var) < 4:
+                continue
+            for slash_var in [var.replace('/', '\\'), var.replace('\\', '/')]:
+                if slash_var.lower() not in seen_variants:
+                    seen_variants.add(slash_var.lower())
+                    pattern = re.compile(re.escape(slash_var), re.IGNORECASE)
+                    mappings.append((pattern, placeholder))
+    mappings.sort(key=lambda x: len(x[0].pattern), reverse=True)
+    return mappings
+
+_sanitization_mappings = get_sanitization_mappings()
+
+def sanitize_string(text: str) -> str:
+    if not text:
+        return text
+    for pattern, placeholder in _sanitization_mappings:
+        text = pattern.sub(placeholder, text)
+    return text
+
+class SanitizingFormatter(logging.Formatter):
+    def format(self, record):
+        formatted = super().format(record)
+        return sanitize_string(formatted)
+
+file_handler = logging.FileHandler(_log_path, mode="w", encoding="utf-8")
+stream_handler = logging.StreamHandler(sys.stdout)
+
+formatter = SanitizingFormatter("%(asctime)s [%(levelname)s] %(message)s")
+file_handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(_log_path, mode="w", encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ],
+    handlers=[file_handler, stream_handler],
 )
 # Silence noisy third-party loggers
 logging.getLogger("PIL").setLevel(logging.WARNING)
@@ -214,7 +271,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
     tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-    tb_text = "".join(tb_lines)
+    tb_text = sanitize_string("".join(tb_lines))
     log.critical("Unhandled exception captured:\n" + tb_text)
     show_crash_dialog(tb_text)
 
@@ -1341,13 +1398,23 @@ class OverlayApp:
         
         try:
             def clean_demand_string(val_str: str) -> str:
-                if val_str and not val_str.endswith('0'):
+                if not val_str:
+                    return val_str
+                if not val_str.endswith('0'):
                     r_index = val_str.rfind('0')
                     if r_index != -1:
                         val_str = val_str[:r_index + 1]
-                if val_str and val_str.endswith('0') and len(val_str) > 4:
-                    val_str = val_str[:-1]
-                    val_str = clean_demand_string(val_str)
+                while True:
+                    if not val_str:
+                        break
+                    try:
+                        val_num = float(val_str)
+                    except ValueError:
+                        break
+                    if val_num > 1200 and val_str.endswith('00'):
+                        val_str = val_str[:-1]
+                    else:
+                        break
                 return val_str
 
             import numpy as np
