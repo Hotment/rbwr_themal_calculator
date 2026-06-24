@@ -10,7 +10,7 @@ import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.2"
+__version__ = "1.6.3"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -1813,7 +1813,7 @@ class OverlayApp:
         btn_recirc_reset.bind("<Enter>", lambda e: btn_recirc_reset.config(bg=BG_HEADER, fg=TEXT_LIGHT))
         btn_recirc_reset.bind("<Leave>", lambda e: btn_recirc_reset.config(bg=BG_MAIN, fg=TEXT_MUTED))
 
-        lbl_recirc_note = tk.Label(content_frame, text="Used for calculating site usage", 
+        lbl_recirc_note = tk.Label(content_frame, text="Use this when running RBMK or SELF-CIRC mode as those don't require recirc changes.", 
                                    bg=BG_CARD, fg=ACCENT_GOLD, font=("Segoe UI", 7, "italic"), justify="left")
         lbl_recirc_note.grid(row=8, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 4))
 
