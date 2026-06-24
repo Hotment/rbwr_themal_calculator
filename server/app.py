@@ -1,27 +1,15 @@
-from fastapi import FastAPI, HTTPException, Request, Depends, status
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field
+from flask import Flask, request, jsonify, send_from_directory, redirect, Response, render_template, session
+from pydantic import BaseModel, Field, ValidationError
 import os
 import json
 import secrets
+import requests
+import hashlib
+import binascii
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
-
-app = FastAPI(
-    title="RBWR APR Overlay Server",
-    description="Provides update checks and a Feedback & Suggestions platform with IP ban tools.",
-    version="1.5.1"
-)
-
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    return response
+from functools import wraps
+from urllib.parse import quote
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FILES_DIR = os.path.join(BASE_DIR, "files")
@@ -29,6 +17,7 @@ VERSIONS_FILE = os.path.join(BASE_DIR, "versions.json")
 SUGGESTIONS_FILE = os.path.join(BASE_DIR, "suggestions.json")
 BANNED_FILE = os.path.join(BASE_DIR, "banned_ips.json")
 CRASHES_FILE = os.path.join(BASE_DIR, "crashes.json")
+ADMINS_FILE = os.path.join(BASE_DIR, "admins.json")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
@@ -37,15 +26,43 @@ os.makedirs(FILES_DIR, exist_ok=True)
 
 load_dotenv()
 
-# --- Authentication & Persistence Helpers ---
-security_basic = HTTPBasic()
+app = Flask(
+    __name__,
+    template_folder="templates"
+)
 
+_secret_key = os.environ.get("FLASK_SECRET_KEY")
+if not _secret_key:
+    _secret_key = secrets.token_hex(32)
+    try:
+        with open(ENV_FILE, "a", encoding="utf-8") as env_f:
+            env_f.write(f"\nFLASK_SECRET_KEY={_secret_key}\n")
+        os.environ["FLASK_SECRET_KEY"] = _secret_key
+    except Exception:
+        pass
+
+app.secret_key = _secret_key
+app.permanent_session_lifetime = timedelta(days=30)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax"
+)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+# --- Authentication & Persistence Helpers ---
 _generated_admin_user = secrets.token_hex(12)
 _generated_admin_pass = secrets.token_hex(24)
 
 if not os.environ.get("ADMIN_USERNAME") or not os.environ.get("ADMIN_PASSWORD"):
     import logging
-    logging.getLogger("uvicorn.error").warning(
+    app.logger.warning(
         "[SECURITY] ADMIN_USERNAME or ADMIN_PASSWORD is not set in the environment/dotenv. "
         "A random secure credential has been dynamically generated for this server session."
     )
@@ -55,17 +72,111 @@ def get_admin_credentials():
     password = os.environ.get("ADMIN_PASSWORD")
     return username or _generated_admin_user, password or _generated_admin_pass
 
-def authenticate_admin(credentials: HTTPBasicCredentials = Depends(security_basic)):
-    correct_user, correct_pass = get_admin_credentials()
-    is_correct_username = secrets.compare_digest(credentials.username, correct_user)
-    is_correct_password = secrets.compare_digest(credentials.password, correct_pass)
-    if not (is_correct_username and is_correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect admin credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    return f"{binascii.hexlify(salt).decode('utf-8')}:{binascii.hexlify(key).decode('utf-8')}"
+
+def verify_password(stored_password_hash: str, password: str) -> bool:
+    try:
+        salt_hex, key_hex = stored_password_hash.split(':')
+        salt = binascii.unhexlify(salt_hex)
+        key = binascii.unhexlify(key_hex)
+        new_key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+        return secrets.compare_digest(key, new_key)
+    except Exception:
+        return False
+
+def load_admins():
+    if not os.path.exists(ADMINS_FILE):
+        return {"admins": {}}
+    with open(ADMINS_FILE, "r", encoding="utf-8") as f:
+        try:
+            return json.load(f)
+        except Exception:
+            return {"admins": {}}
+
+def save_admins(data):
+    with open(ADMINS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+def is_root_user(username: str) -> bool:
+    root_user, _ = get_admin_credentials()
+    return secrets.compare_digest(username, root_user)
+
+def get_authenticated_user():
+    username = session.get("username")
+    if session.get("admin_logged_in") and username:
+        # Check if root
+        root_user, _ = get_admin_credentials()
+        if secrets.compare_digest(username, root_user):
+            return username
+        # Check other admins
+        admins_data = load_admins()
+        if username in admins_data.get("admins", {}):
+            return username
+        
+    auth = request.authorization
+    if auth and auth.username and auth.password:
+        root_user, root_pass = get_admin_credentials()
+        is_root_username = secrets.compare_digest(auth.username, root_user)
+        is_root_password = secrets.compare_digest(auth.password, root_pass)
+        if is_root_username and is_root_password:
+            return auth.username
+            
+        admins_data = load_admins()
+        admin_info = admins_data.get("admins", {}).get(auth.username)
+        if admin_info:
+            stored_hash = admin_info.get("password_hash")
+            if stored_hash and verify_password(stored_hash, auth.password):
+                return auth.username
+            
+    return None
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        username = get_authenticated_user()
+        if not username:
+            if request.path.startswith("/admin/suggestions/data") or \
+               request.path.startswith("/admin/suggestions/status") or \
+               request.path.startswith("/admin/suggestions/ban") or \
+               request.path.startswith("/admin/suggestions/unban"):
+                return Response(
+                    "Unauthorized access - Credentials required",
+                    401,
+                    {"WWW-Authenticate": 'Basic realm="Admin API Required"'}
+                )
+            return redirect(f"/admin/login?next={quote(request.path)}")
+            
+        if request.method in ["POST", "PUT", "DELETE"]:
+            is_basic_auth = False
+            auth = request.authorization
+            if auth and auth.username and auth.password:
+                correct_user, correct_pass = get_admin_credentials()
+                is_correct_username = secrets.compare_digest(auth.username, correct_user)
+                is_correct_password = secrets.compare_digest(auth.password, correct_pass)
+                if is_correct_username and is_correct_password:
+                    is_basic_auth = True
+
+            if not is_basic_auth:
+                origin = request.headers.get("Origin")
+                referer = request.headers.get("Referer")
+                host_url = request.host_url.rstrip('/')
+                
+                origin_ok = True
+                if origin:
+                    origin_ok = (origin.rstrip('/') == host_url)
+                elif referer:
+                    origin_ok = referer.startswith(host_url)
+                else:
+                    origin_ok = False
+                    
+                if not origin_ok:
+                    return jsonify({"detail": "CSRF verification failed - Same origin required"}), 403
+                
+        return f(username, *args, **kwargs)
+    return decorated
 
 def load_versions():
     if not os.path.exists(VERSIONS_FILE):
@@ -151,7 +262,7 @@ def is_ip_banned(ip: str) -> bool:
     except Exception:
         return True
 
-# --- API Endpoints ---
+# --- Request Payloads ---
 
 class SuggestionPayload(BaseModel):
     name: str = Field(default="", max_length=50)
@@ -175,41 +286,65 @@ class BanPayload(BaseModel):
 class UnbanPayload(BaseModel):
     ip: str
 
+# --- API Endpoints ---
 
-@app.get("/", tags=["Root"])
+@app.route("/", methods=["GET"])
 def root():
-    return {
-        "message": "RBWR APR Overlay Server is running.",
-        "endpoints": {
-            "latest_version": "/version/latest",
-            "all_versions": "/versions",
-            "download_latest": "/download/latest",
-            "submit_suggestion": "POST /suggestions",
-            "admin_suggestions": "GET /admin/suggestions"
-        }
-    }
+    data = load_versions()
+    latest_ver = data.get("latest", "1.5.5")
+    latest_meta = data.get("versions", {}).get(latest_ver, {})
+    release_date = latest_meta.get("release_date", "2026-06-12")
+    release_notes = latest_meta.get("notes", "No release notes available.")
+    
+    headers = {"User-Agent": "RBWR-Overlay-Server"}
+    try:
+        r = requests.get(
+            "https://api.github.com/repos/Hotment/rbwr_themal_calculator/releases/latest",
+            headers=headers,
+            timeout=3
+        )
+        if r.status_code == 200:
+            release_data = r.json()
+            tag_name = release_data.get("tag_name", "")
+            if tag_name:
+                latest_ver = tag_name.lstrip('v')
+                published_at = release_data.get("published_at", "")
+                if published_at:
+                    release_date = published_at.split('T')[0]
+            body_content = release_data.get("body", "No release notes available.")
+            if body_content:
+                release_notes = body_content.replace("\\r\\n", "\n").replace("\r\n", "\n")
+    except Exception:
+        pass
 
-@app.get("/version/latest", tags=["Metadata"])
+    return render_template(
+        "index.html",
+        latest_version=latest_ver,
+        release_date=release_date,
+        release_notes=release_notes
+    )
+
+@app.route("/version/latest", methods=["GET"])
 def get_latest_version():
     data = load_versions()
     latest_ver = data.get("latest")
     latest_meta = data.get("versions", {}).get(latest_ver)
     if not latest_meta:
-        raise HTTPException(status_code=404, detail="Latest version metadata not found")
-    return latest_meta
+        return jsonify({"detail": "Latest version metadata not found"}), 404
+    return jsonify(latest_meta)
 
-@app.get("/versions", tags=["Metadata"])
+@app.route("/versions", methods=["GET"])
 def get_all_versions():
     data = load_versions()
-    return data.get("versions", {})
+    return jsonify(data.get("versions", {}))
 
-@app.get("/download/latest", tags=["Downloads"])
+@app.route("/download/latest", methods=["GET"])
 def download_latest_file():
     data = load_versions()
     latest_ver = data.get("latest")
     latest_meta = data.get("versions", {}).get(latest_ver)
     if not latest_meta:
-        raise HTTPException(status_code=404, detail="Latest version metadata not found")
+        return jsonify({"detail": "Latest version metadata not found"}), 404
     
     filename = latest_meta.get("filename")
     filepath = os.path.join(FILES_DIR, filename)
@@ -217,35 +352,44 @@ def download_latest_file():
     if not os.path.exists(filepath):
         parent_filepath = os.path.join(os.path.dirname(BASE_DIR), filename)
         if os.path.exists(parent_filepath):
-            return FileResponse(parent_filepath, media_type="application/octet-stream", filename=filename)
-        raise HTTPException(status_code=404, detail=f"Latest release file '{filename}' is missing on the server.")
+            return send_from_directory(os.path.dirname(BASE_DIR), filename, as_attachment=True)
+        return jsonify({"detail": f"Latest release file '{filename}' is missing on the server."}), 404
         
-    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
+    return send_from_directory(FILES_DIR, filename, as_attachment=True)
 
-@app.get("/download/{version}", tags=["Downloads"])
-def download_version_file(version: str):
+@app.route("/download/<version>", methods=["GET"])
+def download_version_file(version):
     data = load_versions()
     version_meta = data.get("versions", {}).get(version)
     if not version_meta:
-        raise HTTPException(status_code=404, detail=f"Version '{version}' not found in the catalog.")
+        return jsonify({"detail": f"Version '{version}' not found in the catalog."}), 404
     
     filename = version_meta.get("filename")
     filepath = os.path.join(FILES_DIR, filename)
     
     if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail=f"File for version '{version}' is missing on the server.")
+        return jsonify({"detail": f"File for version '{version}' is missing on the server."}), 404
         
-    return FileResponse(filepath, media_type="application/octet-stream", filename=filename)
+    return send_from_directory(FILES_DIR, filename, as_attachment=True)
 
+@app.route("/suggestions", methods=["POST"])
+def submit_suggestion():
+    ip = request.remote_addr or "unknown"
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
 
-@app.post("/suggestions", tags=["Feedback & Suggestions"])
-def submit_suggestion(payload: SuggestionPayload, request: Request):
-    ip = request.client.host if request.client else "unknown"
     if is_ip_banned(ip):
-        raise HTTPException(status_code=403, detail="Your IP is banned from submitting feedback.")
+        return jsonify({"detail": "Your IP is banned from submitting feedback."}), 403
+    
+    try:
+        req_json = request.get_json() or {}
+        payload = SuggestionPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
     
     if not payload.suggestion.strip():
-        raise HTTPException(status_code=400, detail="Feedback details cannot be empty.")
+        return jsonify({"detail": "Feedback details cannot be empty."}), 400
     
     data = load_suggestions()
     suggestions = data.setdefault("suggestions", [])
@@ -263,7 +407,7 @@ def submit_suggestion(payload: SuggestionPayload, request: Request):
                         hours_left = int(time_left.total_seconds() // 3600)
                         mins_left = int((time_left.total_seconds() % 3600) // 60)
                         msg = f"Rate limit: Try again in {hours_left}h {mins_left}m."
-                        raise HTTPException(status_code=429, detail=msg)
+                        return jsonify({"detail": msg}), 429
                 except (ValueError, TypeError):
                     continue
     
@@ -283,13 +427,23 @@ def submit_suggestion(payload: SuggestionPayload, request: Request):
     }
     suggestions.append(new_sug)
     save_suggestions(data)
-    return {"message": "Feedback submitted successfully.", "id": new_id}
+    return jsonify({"message": "Feedback submitted successfully.", "id": new_id})
 
-@app.post("/crashes", tags=["Crash Reports"])
-def submit_crash(payload: CrashPayload, request: Request):
-    ip = request.client.host if request.client else "unknown"
+@app.route("/crashes", methods=["POST"])
+def submit_crash():
+    ip = request.remote_addr or "unknown"
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+
     if is_ip_banned(ip):
-        raise HTTPException(status_code=403, detail="Your IP is banned.")
+        return jsonify({"detail": "Your IP is banned."}), 403
+    
+    try:
+        req_json = request.get_json() or {}
+        payload = CrashPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
     
     data = load_crashes()
     crashes = data.setdefault("crashes", [])
@@ -308,24 +462,37 @@ def submit_crash(payload: CrashPayload, request: Request):
     }
     crashes.append(new_crash)
     save_crashes(data)
-    return {"message": "Crash report submitted successfully.", "id": new_id}
-
+    return jsonify({"message": "Crash report submitted successfully.", "id": new_id})
 
 # --- Admin API / Dashboard ---
 
-@app.post("/admin/suggestions/status", tags=["Admin Feedback & Suggestions API"])
-def update_suggestion_status(payload: StatusUpdatePayload, username: str = Depends(authenticate_admin)):
+@app.route("/admin/suggestions/status", methods=["POST"])
+@admin_required
+def update_suggestion_status(username):
+    try:
+        req_json = request.get_json() or {}
+        payload = StatusUpdatePayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
+
     data = load_suggestions()
     suggestions = data.get("suggestions", [])
     for s in suggestions:
         if s.get("id") == payload.id:
             s["status"] = payload.status
             save_suggestions(data)
-            return {"message": "Status updated successfully.", "id": payload.id, "status": payload.status}
-    raise HTTPException(status_code=404, detail=f"Feedback/suggestion with ID {payload.id} not found.")
+            return jsonify({"message": "Status updated successfully.", "id": payload.id, "status": payload.status})
+    return jsonify({"detail": f"Feedback/suggestion with ID {payload.id} not found."}), 404
 
-@app.post("/admin/suggestions/ban", tags=["Admin Feedback & Suggestions API"])
-def ban_ip(payload: BanPayload, username: str = Depends(authenticate_admin)):
+@app.route("/admin/suggestions/ban", methods=["POST"])
+@admin_required
+def ban_ip(username):
+    try:
+        req_json = request.get_json() or {}
+        payload = BanPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
+
     data = load_banned_ips()
     banned = data.setdefault("banned", {})
     
@@ -339,21 +506,28 @@ def ban_ip(payload: BanPayload, username: str = Depends(authenticate_admin)):
         "reason": payload.reason.strip() or "No reason provided"
     }
     save_banned_ips(data)
-    return {"message": f"IP {payload.ip} banned successfully.", "ip": payload.ip}
+    return jsonify({"message": f"IP {payload.ip} banned successfully.", "ip": payload.ip})
 
-@app.post("/admin/suggestions/unban", tags=["Admin Feedback & Suggestions API"])
-def unban_ip(payload: UnbanPayload, username: str = Depends(authenticate_admin)):
+@app.route("/admin/suggestions/unban", methods=["POST"])
+@admin_required
+def unban_ip(username):
+    try:
+        req_json = request.get_json() or {}
+        payload = UnbanPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
+
     data = load_banned_ips()
     banned = data.get("banned", {})
     if payload.ip in banned:
         del banned[payload.ip]
         save_banned_ips(data)
-        return {"message": f"IP {payload.ip} unbanned successfully.", "ip": payload.ip}
-    raise HTTPException(status_code=404, detail=f"IP {payload.ip} is not currently banned.")
+        return jsonify({"message": f"IP {payload.ip} unbanned successfully.", "ip": payload.ip})
+    return jsonify({"detail": f"IP {payload.ip} is not currently banned."}), 404
 
-
-@app.get("/admin/suggestions/data", tags=["Admin Feedback & Suggestions API"])
-def get_suggestions_data(username: str = Depends(authenticate_admin)):
+@app.route("/admin/suggestions/data", methods=["GET"])
+@admin_required
+def get_suggestions_data(username):
     sug_data = load_suggestions()
     suggestions = sug_data.get("suggestions", [])
     suggestions = sorted(suggestions, key=lambda s: s.get("timestamp", ""), reverse=True)
@@ -365,27 +539,197 @@ def get_suggestions_data(username: str = Depends(authenticate_admin)):
     crashes = crash_data.get("crashes", [])
     crashes = sorted(crashes, key=lambda c: c.get("timestamp", ""), reverse=True)
     
-    return {
+    return jsonify({
         "suggestions": suggestions,
         "banned_ips": banned_ips,
         "crashes": crashes
+    })
+
+@app.route("/admin/suggestions", methods=["GET"])
+@admin_required
+def view_suggestions_dashboard(username):
+    return render_template("admin_panel.html", username=username, active_view="suggestions", is_root=is_root_user(username))
+
+@app.route("/admin/crashes", methods=["GET"])
+@admin_required
+def view_crashes_dashboard(username):
+    return render_template("admin_panel.html", username=username, active_view="crashes", is_root=is_root_user(username))
+
+@app.route("/admin", methods=["GET"])
+@admin_required
+def admin_root(username):
+    return render_template("admin_panel.html", username=username, active_view="overview", is_root=is_root_user(username))
+
+@app.route("/admin/accounts", methods=["GET"])
+@admin_required
+def view_accounts_dashboard(username):
+    if not is_root_user(username):
+        return redirect("/admin")
+    return render_template("admin_panel.html", username=username, active_view="accounts", is_root=True)
+
+class CreateAdminPayload(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=100)
+
+class DeleteAdminPayload(BaseModel):
+    username: str
+
+@app.route("/admin/accounts/data", methods=["GET"])
+@admin_required
+def get_accounts_data(username):
+    if not is_root_user(username):
+        return jsonify({"detail": "Forbidden - Root privileges required"}), 403
+    admins_data = load_admins()
+    admins_list = []
+    for u, info in admins_data.get("admins", {}).items():
+        admins_list.append({
+            "username": u,
+            "created_at": info.get("created_at")
+        })
+    return jsonify({"admins": admins_list})
+
+@app.route("/admin/accounts/create", methods=["POST"])
+@admin_required
+def create_admin_account(username):
+    if not is_root_user(username):
+        return jsonify({"detail": "Forbidden - Root privileges required"}), 403
+    try:
+        req_json = request.get_json() or {}
+        payload = CreateAdminPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
+
+    new_user = payload.username.strip()
+    root_user, _ = get_admin_credentials()
+    if secrets.compare_digest(new_user.lower(), root_user.lower()):
+        return jsonify({"detail": "Cannot create an account with the root username."}), 400
+
+    admins_data = load_admins()
+    admins = admins_data.setdefault("admins", {})
+    if new_user in admins:
+        return jsonify({"detail": f"Admin account '{new_user}' already exists."}), 400
+
+    admins[new_user] = {
+        "password_hash": hash_password(payload.password),
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
+    save_admins(admins_data)
+    return jsonify({"message": f"Admin account '{new_user}' created successfully."})
 
+@app.route("/admin/accounts/delete", methods=["POST"])
+@admin_required
+def delete_admin_account(username):
+    if not is_root_user(username):
+        return jsonify({"detail": "Forbidden - Root privileges required"}), 403
+    try:
+        req_json = request.get_json() or {}
+        payload = DeleteAdminPayload(**req_json)
+    except ValidationError as e:
+        return jsonify({"detail": e.errors()}), 400
 
-@app.get("/admin/suggestions", response_class=HTMLResponse, tags=["Admin Feedback & Suggestions Dashboard"])
-def view_suggestions_dashboard(username: str = Depends(authenticate_admin)):
-    template_path = os.path.join(TEMPLATES_DIR, "suggestions_dashboard.html")
-    if not os.path.exists(template_path):
-        raise HTTPException(status_code=404, detail="Template suggestions_dashboard.html not found.")
+    target_user = payload.username.strip()
+    admins_data = load_admins()
+    admins = admins_data.get("admins", {})
+    if target_user in admins:
+        del admins[target_user]
+        save_admins(admins_data)
+        return jsonify({"message": f"Admin account '{target_user}' removed successfully."})
+    return jsonify({"detail": f"Admin account '{target_user}' not found."}), 404
+
+_login_attempts = {}
+
+def is_login_rate_limited(ip: str) -> bool:
+    if ip == "unknown":
+        return False
+    now = datetime.now(timezone.utc)
+    attempts = _login_attempts.setdefault(ip, [])
+    # Filter out attempts older than 1 minute
+    attempts[:] = [t for t in attempts if now - t < timedelta(minutes=1)]
+    return len(attempts) >= 5
+
+def record_login_attempt(ip: str):
+    if ip != "unknown":
+        _login_attempts.setdefault(ip, []).append(datetime.now(timezone.utc))
+
+def clear_login_attempts(ip: str):
+    if ip in _login_attempts:
+        del _login_attempts[ip]
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = None
+    next_url = request.args.get("next") or request.form.get("next") or "/admin"
     
-    with open(template_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
+    ip = request.remote_addr or "unknown"
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
         
-    html_content = html_content.replace("__USERNAME__", username)
-    return HTMLResponse(content=html_content, status_code=200)
+    if is_ip_banned(ip):
+        return render_template("admin_login.html", error="Your IP is banned.", next_url=next_url), 403
+        
+    if request.method == "POST":
+        origin = request.headers.get("Origin")
+        referer = request.headers.get("Referer")
+        host_url = request.host_url.rstrip('/')
+        
+        origin_ok = True
+        if origin:
+            origin_ok = (origin.rstrip('/') == host_url)
+        elif referer:
+            origin_ok = referer.startswith(host_url)
+        else:
+            origin_ok = False
+            
+        if not origin_ok:
+            return render_template("admin_login.html", error="CSRF verification failed - Same origin required.", next_url=next_url), 403
+            
+        if is_login_rate_limited(ip):
+            return render_template("admin_login.html", error="Too many login attempts. Please try again in 1 minute.", next_url=next_url), 429
+            
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        
+        # Check root
+        root_user, root_pass = get_admin_credentials()
+        is_root_username = secrets.compare_digest(username, root_user)
+        is_root_password = secrets.compare_digest(password, root_pass)
+        
+        authenticated = False
+        if is_root_username and is_root_password:
+            authenticated = True
+        else:
+            # Check other admins
+            admins_data = load_admins()
+            admin_info = admins_data.get("admins", {}).get(username)
+            if admin_info:
+                stored_hash = admin_info.get("password_hash")
+                if stored_hash and verify_password(stored_hash, password):
+                    authenticated = True
+                    
+        if authenticated:
+            clear_login_attempts(ip)
+            
+            session.clear()
+            session.permanent = True
+            session["admin_logged_in"] = True
+            session["username"] = username
+            
+            if not next_url.startswith("/") or next_url.startswith("//") or next_url.startswith("/\\"):
+                next_url = "/admin"
+            return redirect(next_url)
+        else:
+            record_login_attempt(ip)
+            error = "Invalid username or secret key credentials."
+            
+    return render_template("admin_login.html", error=error, next_url=next_url)
+
+@app.route("/admin/logout", methods=["GET"])
+def admin_logout():
+    session.clear()
+    return redirect("/admin/login")
 
 if __name__ == "__main__":
-    import uvicorn
     import sys
     
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -396,5 +740,4 @@ if __name__ == "__main__":
     except ValueError:
         port = 8400
         
-    print(f"Starting server on http://{host}:{port}")
-    uvicorn.run("app:app", host=host, port=port, reload=True)
+    app.run(host=host, port=port, debug=True)

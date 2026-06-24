@@ -11,6 +11,7 @@ server/files
 server/crashes.json
 server/suggestions.json
 server/banned_ips.json
+server/admins.json
 
 venv
 *build

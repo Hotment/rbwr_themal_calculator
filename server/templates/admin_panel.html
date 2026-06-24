@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBWR TTPC Server - Administrative Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Consolas&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Consolas', 'monospace'],
+                        reactor: ['Orbitron', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #07080a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .cyber-grid {
+            background-image:
+                linear-gradient(rgba(18, 22, 28, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(18, 22, 28, 0.3) 1px, transparent 1px);
+            background-size: 25px 25px;
+        }
+
+        .cyber-panel {
+            background-color: rgba(17, 20, 26, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .hover-glow:hover {
+            border-color: rgba(0, 240, 255, 0.25);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+        }
+
+        .glow-cyan {
+            border-color: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+
+        .accent-cyan {
+            color: #00f0ff;
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .accent-gold {
+            color: #ffaa00;
+        }
+
+        .accent-red {
+            color: #ff003c;
+            text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 13, 18, 0.5);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.4);
+        }
+    </style>
+</head>
+
+<body class="cyber-grid min-h-screen flex flex-col md:flex-row font-sans" data-is-root="{{ is_root|lower }}">
+
+    <aside
+        class="w-full md:w-64 bg-[#0c0f14] border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col shrink-0">
+        <div class="p-6 border-b border-slate-800/80 flex items-center gap-3">
+            <div class="relative w-8 h-8 flex items-center justify-center">
+                <div
+                    class="absolute inset-0 rounded-full border border-dashed border-[#00f0ff] animate-[spin_15s_linear_infinite] opacity-50">
+                </div>
+                <div
+                    class="w-5 h-5 rounded-full bg-cyan-950/40 border border-[#00f0ff]/50 flex items-center justify-center">
+                    <div class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-ping"></div>
+                </div>
+            </div>
+            <div>
+                <h1 class="font-reactor text-sm tracking-wider text-slate-200">ADMIN MODULE</h1>
+                <p class="text-[8px] text-slate-500 font-mono tracking-widest">// SYS.ADMIN.CORE</p>
+            </div>
+        </div>
+
+        <nav class="p-4 flex flex-col gap-1.5 grow">
+            <a href="/admin" id="nav-overview"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'overview' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                    stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z">
+                    </path>
+                </svg>
+                <span>CONTROL CENTER</span>
+            </a>
+
+            <a href="/admin/suggestions" id="nav-suggestions"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'suggestions' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                    stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.12 2.95 2.68 3.22 1.24.22 2.5.34 3.79.34 1.29 0 2.55-.12 3.79-.34 1.56-.27 2.68-1.63 2.68-3.22V8.25A3.75 3.75 0 0012.75 4.5h-1.5a3.75 3.75 0 00-3.75 3.75v5.27h-.001z">
+                    </path>
+                </svg>
+                <span>SUGGESTIONS FEED</span>
+            </a>
+
+            <a href="/admin/crashes" id="nav-crashes"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'crashes' %}bg-red-950/20 text-[#ff003c] border border-red-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-red-500 transition" fill="none"
+                    stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
+                </svg>
+                <span>CRASH RECORDS</span>
+            </a>
+
+            {% if is_root %}
+            <a href="/admin/accounts" id="nav-accounts"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'accounts' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                    stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z">
+                    </path>
+                </svg>
+                <span>ADMIN ACCOUNTS</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="p-4 border-t border-slate-800/80 bg-[#090b0e] flex flex-col gap-2">
+            <div class="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                <span>ROLE:</span>
+                <span class="flex items-center gap-1.5 {% if is_root %}text-cyan-400{% else %}text-emerald-500{% endif %} font-bold">
+                    {% if is_root %}ROOT PRIVILEGES{% else %}ADMINISTRATOR{% endif %}
+                </span>
+            </div>
+            <div class="text-xs font-mono text-slate-300 font-bold truncate">{{ username }}</div>
+            <a href="/admin/logout"
+                class="mt-2 text-center py-2 border border-red-950/40 hover:border-red-500 hover:bg-red-950/10 text-red-500 rounded text-[10px] font-mono tracking-wider uppercase transition">
+                Logout Session
+            </a>
+        </div>
+    </aside>
+
+    <div class="grow flex flex-col min-w-0">
+
+        <main id="view-overview"
+            class="view-section grow p-6 md:p-8 flex flex-col gap-8 overflow-y-auto max-h-screen {% if active_view != 'overview' %}hidden{% endif %}">
+            <header
+                class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-widest accent-cyan font-reactor">[ // CENTRAL CONTROL MODULE
+                        ]</h1>
+                    <p class="text-xs text-slate-500 font-mono mt-1">Logged in as: {{ username }} // Session Status:
+                        Active</p>
+                </div>
+                <div class="flex gap-4 font-mono text-xs">
+                    <a href="/"
+                        class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/20 tracking-wider uppercase transition">Home
+                        Site</a>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 grow-0">
+                <a href="/admin/suggestions" id="card-link-suggestions"
+                    class="cyber-panel hover-glow p-8 rounded-xl flex flex-col gap-4 text-left group">
+                    <div
+                        class="w-12 h-12 rounded-lg bg-cyan-950/30 border border-cyan-800/80 flex items-center justify-center text-[#00f0ff] group-hover:bg-[#00f0ff]/10 transition duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.12 2.95 2.68 3.22 1.24.22 2.5.34 3.79.34 1.29 0 2.55-.12 3.79-.34 1.56-.27 2.68-1.63 2.68-3.22V8.25A3.75 3.75 0 0012.75 4.5h-1.5a3.75 3.75 0 00-3.75 3.75v5.27h-.001z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2
+                            class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#00f0ff] transition duration-300">
+                            SUGGESTIONS FEED</h2>
+                        <p class="text-xs text-slate-500 font-mono mt-1">// INDEX: feedback_suggestions.db</p>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed mt-2">
+                        Review incoming feature suggestions, accept or decline proposals, and manage individual user IP
+                        prohibitions directly.
+                    </p>
+                </a>
+
+                <a href="/admin/crashes" id="card-link-crashes"
+                    class="cyber-panel hover-glow p-8 rounded-xl flex flex-col gap-4 text-left group">
+                    <div
+                        class="w-12 h-12 rounded-lg bg-red-950/30 border border-red-900/80 flex items-center justify-center text-[#ff003c] group-hover:bg-[#ff003c]/10 transition duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2
+                            class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#ff003c] transition duration-300">
+                            CRASH RECORDS</h2>
+                        <p class="text-xs text-slate-500 font-mono mt-1">// INDEX: application_crashes.db</p>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed mt-2">
+                        Inspect application exception traceback details, check platform configuration telemetry, and
+                        review diagnostic variables logs.
+                    </p>
+                </a>
+            </div>
+        </main>
+
+        <main id="view-suggestions"
+            class="view-section grow p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen {% if active_view != 'suggestions' %}hidden{% endif %}">
+            <header
+                class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">[ // FEEDBACK & SUGGESTIONS
+                        CENTRAL ]</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">// DATASET: feedback_suggestions.db // SCOPE:
+                        Operator view</p>
+                </div>
+                <div
+                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
+                    <div>ACTIVE BANS: <span id="sug-stat-active-bans" class="accent-red">0</span></div>
+                    <div class="w-px bg-slate-800 self-stretch"></div>
+                    <div>TOTAL ENTRIES: <span id="sug-stat-total-entries" class="accent-cyan">0</span></div>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                <div class="lg:col-span-1 flex flex-col gap-4">
+                    <div class="cyber-panel p-5 rounded-xl border border-slate-800/80">
+                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">[ BANNED
+                            IPS ]</h3>
+                        <div id="banned-ips-container" class="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
+                            <p class="text-xs text-slate-500 italic font-mono">Loading bans...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 flex flex-col gap-4">
+                    <div
+                        class="cyber-panel p-2 rounded-xl flex border border-slate-800/80 gap-1 text-xs font-bold font-mono">
+                        <button onclick="filterStatus('all')" id="tab-all"
+                            class="px-4 py-2 bg-[#00f0ff] text-[#07080a] hover:opacity-95 transition rounded-lg uppercase">All</button>
+                        <button onclick="filterStatus('pending')" id="tab-pending"
+                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Pending</button>
+                        <button onclick="filterStatus('considering')" id="tab-considering"
+                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Considering</button>
+                        <button onclick="filterStatus('accepted')" id="tab-accepted"
+                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Accepted</button>
+                        <button onclick="filterStatus('declined')" id="tab-declined"
+                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Declined</button>
+                    </div>
+
+                    <div id="feed-container" class="flex flex-col gap-4">
+                        <p class="text-sm text-slate-500 italic font-mono">Loading suggestions...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main id="view-crashes"
+            class="view-section grow p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen {% if active_view != 'crashes' %}hidden{% endif %}">
+            <header
+                class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold tracking-widest accent-red font-reactor">[ // APPLICATION CRASH LOG
+                        DECK ]</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">// DATASET: application_crashes.db // SCOPE: Fatal
+                        Errors Log</p>
+                </div>
+                <div
+                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
+                    <div>ACTIVE BANS: <span id="crash-stat-active-bans" class="accent-red">0</span></div>
+                    <div class="w-px bg-slate-800 self-stretch"></div>
+                    <div>TOTAL REPORTS: <span id="crash-stat-total-entries" class="accent-cyan">0</span></div>
+                </div>
+            </header>
+
+            <div id="crashes-container" class="flex flex-col gap-4">
+                <p class="text-sm text-slate-500 italic font-mono">Loading crash reports...</p>
+            </div>
+        </main>
+
+        {% if is_root %}
+        <main id="view-accounts"
+            class="view-section grow p-6 md:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen {% if active_view != 'accounts' %}hidden{% endif %}">
+            <header
+                class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">[ // ADMINISTRATOR ACCESS ACCOUNTS ]</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">// CATALOG: admins.json // PRIVILEGES: Root Access</p>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <!-- Create Admin Account Card -->
+                <div class="cyber-panel p-6 rounded-xl border border-slate-800/80 flex flex-col gap-4">
+                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">[ // CREATE NEW ADMIN ]</h3>
+                    <form id="create-admin-form" onsubmit="handleCreateAdmin(event)" class="flex flex-col gap-4 text-xs font-mono">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-slate-500 uppercase">Username</label>
+                            <input type="text" id="new-admin-username" required placeholder="Enter username"
+                                class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-slate-500 uppercase">Password (min 8 chars)</label>
+                            <input type="password" id="new-admin-password" required placeholder="Enter password"
+                                class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                        </div>
+                        <button type="submit" id="create-admin-btn"
+                            class="px-4 py-3 bg-[#00f0ff] hover:bg-[#00f0ff]/90 text-[#07080a] font-bold rounded-lg uppercase tracking-wider transition mt-2 font-bold">
+                            Create Account
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Admin Accounts List -->
+                <div class="lg:col-span-2 cyber-panel p-6 rounded-xl border border-slate-800/80">
+                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">[ // ACTIVE ADMINISTRATORS ]</h3>
+                    <div id="accounts-list-container" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
+                        <p class="text-xs text-slate-500 italic font-mono">Loading accounts...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {% endif %}
+
+    </div>
+
+    <div id="ban-modal"
+        class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="cyber-panel glow-cyan p-6 rounded-2xl max-w-sm w-full flex flex-col gap-4">
+            <h3 class="text-sm font-bold tracking-widest accent-red font-reactor">[ // ENFORCE IP BAN PROTOCOL ]</h3>
+            <div class="flex flex-col gap-1 text-xs font-mono">
+                <label class="text-slate-500 uppercase">Target IP Address</label>
+                <input type="text" id="ban-ip-field" readonly
+                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+            </div>
+            <div class="flex flex-col gap-1 text-xs font-mono">
+                <label class="text-slate-500 uppercase">Ban Expiration / Duration</label>
+                <select id="ban-duration"
+                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none cursor-pointer">
+                    <option value="60">1 Hour</option>
+                    <option value="1440">24 Hours</option>
+                    <option value="10080">7 Days</option>
+                    <option value="permanent">Permanent</option>
+                </select>
+            </div>
+            <div class="flex flex-col gap-1 text-xs font-mono">
+                <label class="text-slate-500 uppercase">Reason for Prohibition</label>
+                <input type="text" id="ban-reason" placeholder="e.g. Spammed submission logs"
+                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+            </div>
+            <div class="flex gap-3 justify-end text-xs font-bold font-mono mt-2">
+                <button onclick="closeBanModal()"
+                    class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-lg uppercase transition">Cancel</button>
+                <button onclick="submitBan()"
+                    class="px-4 py-2 bg-red-950 text-red-500 hover:bg-red-900 hover:text-white rounded-lg uppercase transition">Enforce
+                    Ban</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const IS_ROOT = document.body.dataset.isRoot === 'true';
+        let latestData = null;
+        let currentFilter = 'all';
+        let bannedIps = {};
+        let activeView = '{{ active_view }}';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            bindNavLink('nav-overview', 'overview', '/admin');
+            bindNavLink('nav-suggestions', 'suggestions', '/admin/suggestions');
+            bindNavLink('nav-crashes', 'crashes', '/admin/crashes');
+            if (IS_ROOT) {
+                bindNavLink('nav-accounts', 'accounts', '/admin/accounts');
+            }
+
+            const cardSug = document.getElementById('card-link-suggestions');
+            if (cardSug) {
+                cardSug.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateToView('suggestions', '/admin/suggestions');
+                });
+            }
+            const cardCrash = document.getElementById('card-link-crashes');
+            if (cardCrash) {
+                cardCrash.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateToView('crashes', '/admin/crashes');
+                });
+            }
+
+            fetchDashboardData();
+            setInterval(fetchDashboardData, 5000);
+        });
+
+        function bindNavLink(id, viewName, path) {
+            const link = document.getElementById(id);
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateToView(viewName, path);
+                });
+            }
+        }
+
+        function navigateToView(viewName, path, pushHistory = true) {
+            if (pushHistory) {
+                history.pushState({ view: viewName }, '', path);
+            }
+            switchDashboardView(viewName);
+        }
+
+        window.addEventListener('popstate', (e) => {
+            const path = window.location.pathname;
+            if (path === '/admin/crashes') {
+                navigateToView('crashes', path, false);
+            } else if (path === '/admin/suggestions') {
+                navigateToView('suggestions', path, false);
+            } else if (path === '/admin/accounts') {
+                if (IS_ROOT) {
+                    navigateToView('accounts', path, false);
+                } else {
+                    navigateToView('overview', '/admin', false);
+                }
+            } else {
+                navigateToView('overview', path, false);
+            }
+        });
+
+        function switchDashboardView(viewName) {
+            activeView = viewName;
+
+            document.querySelectorAll('.view-section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            const targetSection = document.getElementById('view-' + viewName);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
+
+            resetNavStyles();
+
+            const activeLink = document.getElementById('nav-' + viewName);
+            if (activeLink) {
+                if (viewName === 'crashes') {
+                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-red-950/20 text-[#ff003c] border border-red-500/20 transition group";
+                } else {
+                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20 transition group";
+                }
+            }
+
+            if (latestData) {
+                updateStats(latestData);
+            }
+        }
+
+        function resetNavStyles() {
+            const views = ['overview', 'suggestions', 'crashes', 'accounts'];
+            views.forEach(v => {
+                const link = document.getElementById('nav-' + v);
+                if (link) {
+                    link.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent transition group";
+                }
+            });
+        }
+
+        function filterStatus(status) {
+            currentFilter = status;
+            const tabs = document.querySelectorAll('button[id^="tab-"]');
+            tabs.forEach(tab => {
+                tab.classList.remove('bg-[#00f0ff]', 'text-[#07080a]');
+                tab.classList.add('text-slate-400');
+            });
+            const activeTab = document.getElementById('tab-' + status);
+            activeTab.classList.add('bg-[#00f0ff]', 'text-[#07080a]');
+            activeTab.classList.remove('text-slate-400');
+
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const cards = document.querySelectorAll('.suggestion-card');
+            cards.forEach(card => {
+                if (currentFilter === 'all' || card.getAttribute('data-status') === currentFilter) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch('/admin/suggestions/data');
+                if (response.ok) {
+                    const data = await response.json();
+                    latestData = data;
+                    bannedIps = data.banned_ips;
+                    updateStats(data);
+                    renderBannedIps(data.banned_ips);
+                    renderSuggestions(data.suggestions);
+                    renderCrashes(data.crashes);
+                }
+                if (IS_ROOT) {
+                    fetchAccountsData();
+                }
+            } catch (err) {
+                console.error('Error fetching dashboard data:', err);
+            }
+        }
+
+        function updateStats(data) {
+            const activeBans = Object.keys(data.banned_ips).length;
+
+            const sugActiveBans = document.getElementById('sug-stat-active-bans');
+            if (sugActiveBans) sugActiveBans.innerText = activeBans;
+
+            const crashActiveBans = document.getElementById('crash-stat-active-bans');
+            if (crashActiveBans) crashActiveBans.innerText = activeBans;
+
+            const sugTotal = document.getElementById('sug-stat-total-entries');
+            if (sugTotal) sugTotal.innerText = data.suggestions.length;
+
+            const crashTotal = document.getElementById('crash-stat-total-entries');
+            if (crashTotal) crashTotal.innerText = data.crashes.length;
+        }
+
+        function renderBannedIps(bans) {
+            const container = document.getElementById('banned-ips-container');
+            if (!container) return;
+            const ipList = Object.keys(bans);
+            if (ipList.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic">No IPs currently banned.</p>';
+                return;
+            }
+
+            let html = '';
+            for (const ip of ipList) {
+                const info = bans[ip];
+                const expires = info.expires_at ? info.expires_at.replace('T', ' ').substring(0, 16) : "Permanent";
+                html += `
+                    <div class="bg-[#0b0d12] p-3 rounded-lg border border-red-950 text-xs font-mono">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-red-500">${ip}</span>
+                            <button onclick="unbanIP('${ip}')" class="text-slate-400 hover:text-white underline">Unban</button>
+                        </div>
+                        <div class="text-slate-500 mt-1 break-words">Reason: ${escapeHtml(info.reason || "N/A")}</div>
+                        <div class="text-[10px] text-slate-600 mt-1">Expires: ${expires}</div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function renderSuggestions(suggestions) {
+            const container = document.getElementById('feed-container');
+            if (!container) return;
+            if (suggestions.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 italic">No feedback or suggestions submitted yet.</p>';
+                return;
+            }
+
+            let html = '';
+            for (const s of suggestions) {
+                const timeStr = (s.timestamp || '').substring(0, 19).replace('T', ' ');
+                const isBanned = s.ip in bannedIps;
+
+                let badgeClass = '';
+                if (s.status === 'pending') badgeClass = 'bg-amber-950 text-amber-400';
+                else if (s.status === 'considering') badgeClass = 'bg-blue-950 text-blue-400';
+                else if (s.status === 'accepted') badgeClass = 'bg-emerald-950 text-emerald-400';
+                else if (s.status === 'declined') badgeClass = 'bg-rose-950 text-rose-400';
+
+                const banBtn = isBanned
+                    ? `<button onclick="unbanIP('${s.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-bold uppercase transition">Unban IP</button>`
+                    : `<button onclick="openBanModal('${s.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded-lg font-bold uppercase transition">Ban IP</button>`;
+
+                const bannedTag = isBanned
+                    ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
+                    : '';
+
+                html += `
+                    <div class="suggestion-card cyber-panel p-5 rounded-xl border border-slate-800 flex flex-col gap-3" data-status="${s.status || 'pending'}">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-bold text-slate-200">${escapeHtml(s.name || 'Anonymous')}</span>
+                                <span class="text-[10px] text-slate-500 font-mono">${timeStr}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${badgeClass}">${s.status}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
+                                <span>Sender IP: <span class="text-slate-300">${s.ip}</span></span>
+                                ${bannedTag}
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-300 bg-[#0b0d12] p-4 rounded-lg border border-slate-900 leading-relaxed font-mono whitespace-pre-wrap">${escapeHtml(s.suggestion)}</p>
+                        
+                        <div class="flex flex-wrap justify-between items-center gap-4 mt-1 border-t border-slate-900/60 pt-3 font-mono">
+                            <div class="flex gap-2">
+                                <button onclick="updateStatus(${s.id}, 'accepted')" class="px-3 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-400 text-xs rounded-lg font-bold uppercase transition">Accept</button>
+                                <button onclick="updateStatus(${s.id}, 'considering')" class="px-3 py-1 bg-blue-950 hover:bg-blue-900 text-blue-400 text-xs rounded-lg font-bold uppercase transition">Consider</button>
+                                <button onclick="updateStatus(${s.id}, 'declined')" class="px-3 py-1 bg-rose-950 hover:bg-rose-900 text-rose-400 text-xs rounded-lg font-bold uppercase transition">Decline</button>
+                                <button onclick="updateStatus(${s.id}, 'pending')" class="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs rounded-lg font-bold uppercase transition">Pending</button>
+                            </div>
+                            <div>
+                                ${banBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+            applyFilter();
+        }
+
+        function renderCrashes(crashes) {
+            const container = document.getElementById('crashes-container');
+            if (!container) return;
+            if (crashes.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-500 italic font-mono">No crash reports submitted yet.</p>';
+                return;
+            }
+
+            let html = '';
+            for (const c of crashes) {
+                const timeStr = (c.timestamp || '').substring(0, 19).replace('T', ' ');
+                const isBanned = c.ip in bannedIps;
+
+                const banBtn = isBanned
+                    ? `<button onclick="unbanIP('${c.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-bold uppercase transition">Unban IP</button>`
+                    : `<button onclick="openBanModal('${c.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded-lg font-bold uppercase transition">Ban IP</button>`;
+
+                const bannedTag = isBanned
+                    ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
+                    : '';
+
+                html += `
+                    <div class="cyber-panel p-5 rounded-xl border border-slate-800 flex flex-col gap-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-bold text-rose-500 font-reactor">[ CRASH #${c.id} ]</span>
+                                <span class="text-[10px] text-slate-500 font-mono">${timeStr}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-rose-950 text-rose-400 font-mono">v${escapeHtml(c.version)}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
+                                <span>Sender IP: <span class="text-slate-300">${c.ip}</span></span>
+                                ${bannedTag}
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-3 font-mono">
+                            <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Traceback Exception Details</summary>
+                                <pre class="text-xs text-rose-500 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-rose-950/40 select-text cursor-text">${escapeHtml(c.traceback)}</pre>
+                            </details>
+                            
+                            <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Diagnostics Log Data</summary>
+                                <pre class="text-xs text-slate-300 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-slate-800 select-text cursor-text">${escapeHtml(c.log_data || 'No logs captured.')}</pre>
+                            </details>
+                        </div>
+                        
+                        <div class="flex justify-end items-center gap-4 mt-1 border-t border-slate-900/60 pt-3 font-mono">
+                            <div>
+                                ${banBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function (m) { return map[m]; });
+        }
+
+        async function updateStatus(id, status) {
+            try {
+                const response = await fetch('/admin/suggestions/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, status })
+                });
+                if (response.ok) {
+                    await fetchDashboardData();
+                } else {
+                    alert('Failed to update status.');
+                }
+            } catch (err) {
+                alert('Network error updating status.');
+            }
+        }
+
+        async function unbanIP(ip) {
+            try {
+                const response = await fetch('/admin/suggestions/unban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip })
+                });
+                if (response.ok) {
+                    await fetchDashboardData();
+                } else {
+                    alert('Failed to unban IP.');
+                }
+            } catch (err) {
+                alert('Network error unbanning IP.');
+            }
+        }
+
+        function openBanModal(ip) {
+            document.getElementById('ban-ip-field').value = ip;
+            document.getElementById('ban-modal').classList.remove('hidden');
+        }
+
+        function closeBanModal() {
+            document.getElementById('ban-modal').classList.add('hidden');
+        }
+
+        async function submitBan() {
+            const ip = document.getElementById('ban-ip-field').value;
+            const durationVal = document.getElementById('ban-duration').value;
+            const reason = document.getElementById('ban-reason').value;
+
+            const duration_minutes = durationVal === 'permanent' ? null : parseInt(durationVal);
+
+            try {
+                const response = await fetch('/admin/suggestions/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip, duration_minutes, reason })
+                });
+                if (response.ok) {
+                    closeBanModal();
+                    document.getElementById('ban-reason').value = '';
+                    await fetchDashboardData();
+                } else {
+                    alert('Failed to ban IP.');
+                }
+            } catch (err) {
+                alert('Network error performing IP ban.');
+            }
+        }
+
+        if (IS_ROOT) {
+            window.fetchAccountsData = async function() {
+                try {
+                    const response = await fetch('/admin/accounts/data');
+                    if (response.ok) {
+                        const data = await response.json();
+                        renderAccounts(data.admins);
+                    }
+                } catch (err) {
+                    console.error('Error fetching accounts data:', err);
+                }
+            };
+
+            function renderAccounts(admins) {
+                const container = document.getElementById('accounts-list-container');
+                if (!container) return;
+                if (admins.length === 0) {
+                    container.innerHTML = '<p class="text-xs text-slate-500 italic">No custom administrator accounts configured.</p>';
+                    return;
+                }
+
+                let html = '';
+                for (const admin of admins) {
+                    const timeStr = admin.created_at ? admin.created_at.substring(0, 19).replace('T', ' ') : "N/A";
+                    html += `
+                        <div class="bg-[#0b0d12] p-4 rounded-lg border border-slate-900 flex justify-between items-center text-xs font-mono">
+                            <div>
+                                <span class="font-bold text-slate-200">${escapeHtml(admin.username)}</span>
+                                <div class="text-[10px] text-slate-600 mt-1">Created: ${timeStr}</div>
+                            </div>
+                            <button onclick="deleteAdmin('${escapeHtml(admin.username)}')" class="px-3 py-1 bg-rose-950/40 hover:bg-rose-950 text-rose-500 hover:text-white rounded-lg uppercase tracking-wider font-bold transition">Delete</button>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            }
+
+            window.handleCreateAdmin = async function(e) {
+                e.preventDefault();
+                const usernameInput = document.getElementById('new-admin-username');
+                const passwordInput = document.getElementById('new-admin-password');
+                const btn = document.getElementById('create-admin-btn');
+                
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value;
+
+                if (password.length < 8) {
+                    alert('Password must be at least 8 characters long.');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.classList.add('opacity-75');
+
+                try {
+                    const response = await fetch('/admin/accounts/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const resData = await response.json();
+                    if (response.ok) {
+                        usernameInput.value = '';
+                        passwordInput.value = '';
+                        await fetchAccountsData();
+                        alert(resData.message);
+                    } else {
+                        alert(resData.detail || 'Failed to create account.');
+                    }
+                } catch (err) {
+                    alert('Network error creating admin account.');
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75');
+                }
+            };
+
+            window.deleteAdmin = async function(username) {
+                if (!confirm(`Are you sure you want to remove admin account '${username}'?`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/admin/accounts/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username })
+                    });
+                    const resData = await response.json();
+                    if (response.ok) {
+                        await fetchAccountsData();
+                        alert(resData.message);
+                    } else {
+                        alert(resData.detail || 'Failed to delete account.');
+                    }
+                } catch (err) {
+                    alert('Network error deleting admin account.');
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

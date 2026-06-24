@@ -1,4 +1,4 @@
 python-dotenv
 pydantic
-fastapi
-uvicorn
+Flask
+requests
