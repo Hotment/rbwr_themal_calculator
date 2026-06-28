@@ -359,19 +359,19 @@ TEXT_MUTED = "#6c7d93"    # Muted control-room slate blue
 ACCENT_RED = "#ff003c"    # Emergency SCRAM laser red
 ACCENT_GOLD = "#ffaa00"   # Warning amber isotope yellow
 
-APRMtoRecircTable = {
-    0: 0,
-    10: 28,
-    20: 28,
-    30: 28,
-    40: 38,
-    50: 50,
-    60: 70,
-    70: 85,
-    80: 90,
-    90: 97,
-    100: 100,
-    110: 100
+APRMtoRecircTable = { # The numbers in the comments are values i got from the games reactor auto control
+    0: 0, #0
+    10: 28, #0
+    20: 28, #5
+    30: 28, #14
+    40: 38, #35
+    50: 50, #55
+    60: 70, #74
+    70: 85, #88
+    80: 94, #95.5
+    90: 97, #99
+    100: 100, #100
+    110: 100  #100
 }
 
 class UsageCalculator:
