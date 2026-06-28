@@ -16,5 +16,8 @@ server/admins.json
 venv
 *build
 
-rbwr_overlay.exe
+rbwr_overlay*.exe
+rbwr_overlay*.zip
+RBWR_APRM_Calculator*.exe
+RBWR_APRM_Calculator*.zip
 todo.md

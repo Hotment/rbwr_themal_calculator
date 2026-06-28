@@ -1,4 +1,4 @@
-# RBWR APR Transparent Overlay Calculator
+# RBWR APRM Transparent Overlay Calculator
 
 A transparent desktop overlay tool designed for the Roblox **Realistic Boiling Water Reactor (RBWR)** simulation. This utility calculates Reactor Thermal Power (RTP% / APRM) and other essential values from MWt demand (and vice-versa) in real-time, directly on your screen while playing.
 

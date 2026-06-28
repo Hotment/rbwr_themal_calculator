@@ -23,7 +23,7 @@ except NameError:
     _is_compiled = False
 
 _log_dir = os.path.dirname(os.path.abspath(sys.argv[0])) if _is_compiled else os.path.dirname(os.path.abspath(__file__))
-_log_path = os.path.join(_log_dir, "rbwr_overlay.log")
+_log_path = os.path.join(_log_dir, "RBWR_APRM_Calculator.log")
 _sanitization_mappings = []
 
 def get_sanitization_mappings():
@@ -108,6 +108,9 @@ def show_crash_dialog(tb_text):
                 icon_path = os.path.join(_log_dir, "icon.ico")
                 if os.path.exists(icon_path):
                     crash_win.iconbitmap(icon_path)
+                else:
+                    crash_win.tk_icon = ImageTk.PhotoImage(get_default_icon_image())  # pyright: ignore[reportAttributeAccessIssue]
+                    crash_win.iconphoto(False, crash_win.tk_icon)  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue]
             except Exception:
                 pass
 
@@ -282,7 +285,7 @@ sys.excepthook = handle_exception
 threading.excepthook = handle_thread_exception
 tk.Tk.report_callback_exception = lambda self, exc_type, exc_value, exc_traceback: handle_exception(exc_type, exc_value, exc_traceback)  # pyright: ignore[reportAttributeAccessIssue]
 
-log.info(f"=== RBWR APR Overlay v{__version__} starting ===")
+log.info(f"=== RBWR APRM Calculator v{__version__} starting ===")
 log.info(f"Version: {__version__}")
 log.info(f"Python: {sys.version}")
 log.info(f"Executable: {sys.executable}")
@@ -575,7 +578,7 @@ class OverlayApp:
         self.root.withdraw()
         self.gui_queue = queue.Queue()
         self.poll_gui_queue()
-        self.root.title(f"RBWR APR Calculator v{__version__}")
+        self.root.title(f"RBWR APRM Calculator v{__version__}")
         
         # Load saved settings
         settings = self.load_settings()
@@ -659,7 +662,15 @@ class OverlayApp:
             except Exception:
                 log.warning("Failed to load custom icon from icon.ico")
         else:
-            log.warning("Failed to load custom icon from icon.ico")
+            try:
+                icon_path = os.path.join(_log_dir, "icon.ico")
+                if os.path.exists(icon_path):
+                    self.root.iconbitmap(icon_path)
+                else:
+                    self.tk_icon = ImageTk.PhotoImage(self.icon_image_pil)
+                    self.root.iconphoto(False, self.tk_icon)  # pyright: ignore[reportArgumentType]
+            except Exception as e:
+                log.warning(f"Failed to set fallback icon: {e}")
                 
         self.setup_tray_icon()
         
@@ -1074,7 +1085,7 @@ class OverlayApp:
                 pystray.MenuItem("Exit", lambda icon, item: self.quit_app())
             )
             
-            self.tray = pystray.Icon("RBWR APR Calculator", image, f"RBWR APR Calculator v{__version__}", menu)
+            self.tray = pystray.Icon("RBWR APRM Calculator", image, f"RBWR APRM Calculator v{__version__}", menu)
             threading.Thread(target=self.tray.run, daemon=True).start()
         except Exception:
             self.tray = None
@@ -1266,7 +1277,7 @@ class OverlayApp:
             except Exception as e:
                 log.error(f"Failed to initialize RapidOCR on retry: {e}")
                 log.error(traceback.format_exc())
-                self.show_custom_message("Screen Reader", f"Failed to initialize OCR engine models.\n\nError: {e}\n\nCheck rbwr_overlay.log for details.", is_error=True)
+                self.show_custom_message("Screen Reader", f"Failed to initialize OCR engine models.\n\nError: {e}\n\nCheck RBWR_APRM_Calculator.log for details.", is_error=True)
                 return
 
         self.auto_scan_active = not self.auto_scan_active
@@ -2036,7 +2047,7 @@ class OverlayApp:
                             if latest_version != self.skipped_version:
                                 release_notes = data.get("body", "No release details available.")
                                 download_url = None
-                                filename = f"rbwr_overlay_v{latest_version}.exe"
+                                filename = f"RBWR_APRM_Calculator_v{latest_version}.exe"
                                 for asset in data.get("assets", []):
                                     if asset.get("name", "").endswith(".exe"):
                                         filename = asset.get("name")
