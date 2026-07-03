@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RBWR APRM Calculator - Online Terminal{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Consolas&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Consolas', 'monospace'],
+                        reactor: ['Orbitron', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #07080a;
+            color: #ffffff;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(57, 255, 20, 0.03) 0%, transparent 40%);
+        }
+
+        .cyber-grid {
+            background-image:
+                linear-gradient(rgba(18, 22, 28, 0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(18, 22, 28, 0.4) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .cyber-panel {
+            background-color: rgba(17, 20, 26, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .cyber-panel:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .neon-text-cyan {
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .neon-text-green {
+            color: #39ff14;
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+        }
+
+        .neon-border-cyan {
+            border-color: #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        .neon-border-green {
+            border-color: #39ff14;
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
+        }
+
+        .input-cyber {
+            background-color: #0b0d12;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-cyber:focus {
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .checkbox-cyber {
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: #0b0d12;
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 4px;
+            display: inline-grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            vertical-align: middle;
+        }
+
+        .checkbox-cyber::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            background-color: #00f0ff;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+
+        .checkbox-cyber:checked {
+            border-color: #00f0ff;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .checkbox-cyber:checked::before {
+            transform: scale(1);
+        }
+
+        .checkbox-cyber:focus {
+            outline: none;
+            border-color: rgba(0, 240, 255, 0.6);
+        }
+
+        .checkbox-cyber:checked:focus {
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Hide browser-default spin buttons */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.85;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .animate-core {
+            animation: pulse 4s infinite ease-in-out;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="cyber-grid min-h-screen flex flex-col font-sans select-none">
+
+    <header class="border-b border-[#161a22] bg-[#07080a]/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-3">
+                <svg class="w-8 h-8 text-[#00f0ff]" fill="none" stroke="currentColor" stroke-width="1.5"
+                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="3" fill="#00f0ff" class="opacity-70"></circle>
+                    <ellipse cx="12" cy="12" rx="9" ry="3" stroke="#00f0ff" stroke-width="1.5"
+                        transform="rotate(30 12 12)"></ellipse>
+                    <ellipse cx="12" cy="12" rx="9" ry="3" stroke="#00f0ff" stroke-width="1.5"
+                        transform="rotate(90 12 12)"></ellipse>
+                    <ellipse cx="12" cy="12" rx="9" ry="3" stroke="#00f0ff" stroke-width="1.5"
+                        transform="rotate(150 12 12)"></ellipse>
+                </svg>
+                <div>
+                    <span class="font-reactor text-lg tracking-widest text-[#00f0ff]">RBWR APRM Calculator</span>
+                    <span class="text-xs text-slate-500 font-mono block -mt-1.5">ONLINE TERMINAL</span>
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-8 text-sm font-semibold tracking-wider text-slate-400">
+                {% block nav %}{% endblock %}
+            </nav>
+            <div class="md:hidden">
+                {% block mobile_nav %}{% endblock %}
+            </div>
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer class="border-t border-[#161a22] bg-[#07080a] py-8 text-center text-xs text-slate-500 font-mono mt-20">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                © 2026 Realistic Boiling Water Reactor APRM Calculator Utility
+            </div>
+            <div class="flex gap-6">
+                <a href="https://github.com/Hotment/rbwr_themal_calculator" target="_blank"
+                    class="hover:text-white transition">GITHUB</a>
+                {% block footer_links %}{% endblock %}
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

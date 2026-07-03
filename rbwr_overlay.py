@@ -10,7 +10,7 @@ import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.3"
+__version__ = "1.6.4"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -2557,7 +2557,7 @@ class OverlayApp:
             self.updating_fields = False
 
     def render_outputs(self, thermal, flow, gen_load):
-        limit = 110 if self.calc.selected_unit == 1 else 115
+        limit = 108
         unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
         if not self.is_compact:
             self.lbl_gen_val.config(text=f"⚡ {gen_load:.2f} MWe", fg=ACCENT_CYAN)

@@ -324,6 +324,12 @@ def root():
         release_notes=release_notes
     )
 
+@app.route("/calculator", methods=["GET"])
+def calculator_page():
+    data = load_versions()
+    latest_ver = data.get("latest", "1.5.5")
+    return render_template("calculator.html", latest_version=latest_ver)
+
 @app.route("/version/latest", methods=["GET"])
 def get_latest_version():
     data = load_versions()

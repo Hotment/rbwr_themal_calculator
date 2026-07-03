@@ -10,7 +10,7 @@ A transparent desktop overlay tool designed for the Roblox **Realistic Boiling W
 *   **Dual UI Modes:** Toggle between a detailed telemetry view and a compact bar mode (360x60 px) that acts as a minimal in-game HUD.
 *   **Automatic Screen Scanning (OCR):** Integrates RapidOCR to scan active window text, allowing you to grab target demand values directly from your game window via hotkey (default: `F7`).
 *   **Dynamic Usage Solver:** Runs a 5-step iterative solver to calculate thermal requirements while dynamically accounting for current auxiliary site usage (recirculation pumps, feedwater pumps, condenser pumps, etc.).
-*   **Overpower Safe Limit Alert:** Flashes a red warning indicator if the calculated core power goes above safe limits (110% RTP for Unit 1, and 115% RTP for Unit 2).
+*   **Overpower Safe Limit Alert:** Flashes a red warning indicator if the calculated core power goes above safe limits (108% for both units).
 *   **Multi-Unit Layouts:** Dedicated calculations and settings for both Unit 1 and Unit 2.
 
 ---
