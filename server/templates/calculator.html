@@ -12,8 +12,7 @@
 {% endblock %}
 
 {% block mobile_nav %}
-<a href="/"
-    class="px-3 py-1.5 border border-slate-700 text-slate-300 rounded font-mono text-xs">HOME</a>
+<a href="/" class="px-3 py-1.5 border border-slate-700 text-slate-300 rounded font-mono text-xs">HOME</a>
 {% endblock %}
 
 {% block content %}
@@ -26,7 +25,7 @@
         </h1>
         <div class="h-1 w-20 bg-gradient-to-r from-[#00f0ff] to-[#39ff14] rounded"></div>
         <p class="text-slate-500 text-sm max-w-md">
-            Compute power usage, flow rates, and thermal values directly in your browser.
+            Calculate reactor power requirements, flow rates, and auxiliary usage in your browser.
         </p>
     </div>
 
@@ -102,10 +101,10 @@
                 class="flex-grow rounded-xl bg-[#0b0d12] border border-[#00f0ff]/10 p-6 flex flex-col justify-between min-h-[220px] transition-all">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs text-slate-500 font-mono block">// TELEMETRY SCANNER</span>
+                        <span class="text-xs text-slate-500 font-mono block">// CALCULATOR RESULTS</span>
                         <span id="web-status-label"
                             class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-[#39ff14] border border-emerald-900/30 uppercase mt-1 inline-block">
-                            SYS OK
+                            SYSTEM OK
                         </span>
                     </div>
                     <span class="text-[10px] font-mono text-slate-500" id="web-unit-header">UNIT 1 ACTIVE</span>
@@ -130,19 +129,26 @@
                 </div>
             </div>
 
-            <div
-                class="rounded-xl border border-[#ffaa00]/15 bg-[#ffaa00]/5 p-4 flex gap-3 text-xs leading-relaxed text-amber-300">
-                <svg class="w-6 h-6 text-[#ffaa00] shrink-0" fill="none" stroke="currentColor" stroke-width="2"
+            <div id="ocr-tooltip"
+                class="relative rounded-xl border border-[#00f0ff]/15 bg-[#00f0ff]/5 p-4 flex gap-3 text-xs leading-relaxed text-slate-300 pr-8">
+                <svg class="w-5 h-5 text-[#00f0ff] shrink-0" fill="none" stroke="currentColor" stroke-width="2"
                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                    </path>
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div>
-                    <strong class="block text-white mb-0.5">Desktop OCR Features Available</strong>
-                    Screen scanning is only supported in the downloadable app. Download the app to automatically
-                    capture and sync target demands from your Roblox game window with a hotkey.
+                    <strong class="block text-white mb-0.5">Need Automatic Screen Scanning?</strong>
+                    OCR screen scanning is a desktop-only feature. Download the desktop app to automatically capture
+                    target demand values from your Roblox game window using a hotkey (Default: F7).
                 </div>
+                <button type="button" onclick="document.getElementById('ocr-tooltip').remove()"
+                    class="absolute top-3.5 right-3.5 text-slate-500 hover:text-white transition focus:outline-none"
+                    aria-label="Close tooltip">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
@@ -424,7 +430,7 @@
             displaySub.className = "text-[10px] font-mono text-slate-400 mt-2";
             displaySub.innerText = "⚡ REACTOR POWER STATUS";
             statusLabel.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-[#39ff14] border border-emerald-900/30 uppercase mt-1 inline-block";
-            statusLabel.innerText = "SYS OK";
+            statusLabel.innerText = "SYSTEM OK";
         }
     }
 

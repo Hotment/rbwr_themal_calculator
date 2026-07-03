@@ -25,17 +25,15 @@
             <div
                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-[#11141a] border border-[#1a202c] text-xs font-mono text-slate-400 w-fit">
                 <span class="w-2 h-2 rounded-full bg-[#39ff14] animate-ping"></span>
-                SYSTEMS STATUS: ONLINE // VER {{ latest_version }}
+                STATUS: ONLINE // VER {{ latest_version }}
             </div>
             <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">
-                Transparent Telemetry for <span
-                    class="text-transparent bg-clip-text bg-gradient-to-r from-[#00f0ff] to-[#39ff14]">RBWR
-                    Reactors</span>
+                APRM & Thermal Calculator for <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-[#00f0ff] to-[#39ff14]">RBWR</span>
             </h1>
             <p class="text-slate-400 text-base md:text-lg leading-relaxed max-w-xl">
-                A professional, lightweight, borderless desktop overlay built for the Roblox <strong>Realistic
-                    Boiling Water Reactor (RBWR)</strong> simulation. Calculate RTP% (APRM) and steam flow
-                requirements live on your screen.
+                A lightweight, borderless desktop overlay for the Realistic Boiling Water Reactor (RBWR) Roblox game.
+                Calculate reactor power (APRM) and steam flow requirements in real-time.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 mt-2">
                 <a href="https://github.com/Hotment/rbwr_themal_calculator/releases/latest"
@@ -66,11 +64,11 @@
         <div class="text-center flex flex-col items-center gap-3">
             <h2
                 class="text-3xl font-extrabold tracking-tight font-reactor text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 uppercase">
-                Core Technical Specifications
+                Key Features
             </h2>
             <div class="h-1 w-20 bg-gradient-to-r from-[#00f0ff] to-[#39ff14] rounded"></div>
             <p class="text-slate-500 text-sm max-w-md">
-                Designed to sit seamlessly on top of Roblox for instantaneous core telemetry and monitoring.
+                Designed to sit seamlessly on top of Roblox for quick telemetry monitoring.
             </p>
         </div>
 
@@ -84,10 +82,10 @@
                         </path>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold">Transparent HUD Mode</h3>
+                <h3 class="text-lg font-bold">Borderless HUD Mode</h3>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    A borderless, pin-able window that stays layered on top of Roblox. Instantly slide opacity from
-                    30% to 100% via client settings.
+                    A borderless window that stays on top of Roblox. You can easily adjust the window opacity from 30%
+                    to 100% in settings.
                 </p>
             </div>
 
@@ -100,11 +98,10 @@
                         </path>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold">Rapid OCR Scanning</h3>
+                <h3 class="text-lg font-bold">Auto Screen Scanning (OCR)</h3>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    Read target demand parameters instantly from the Roblox game view using standard RapidOCR on a
-                    customizable hotkey (default: <kbd
-                        class="px-1.5 py-0.5 rounded bg-slate-800 text-[11px] font-mono">F7</kbd>).
+                    Automatically reads target demand values directly from the game using OCR when you press the hotkey
+                    (default: F7).
                 </p>
             </div>
 
@@ -116,10 +113,10 @@
                             d="M9 7.5L12 10.5M12 10.5L15 7.5M12 10.5V16.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold">Dynamic Site Usage Calculations</h3>
+                <h3 class="text-lg font-bold">Dynamic Power Solver</h3>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    Iterates thermal requirements dynamically, adjusting for feedwater pumps, condenser pumps, and
-                    recirculation pumps power usage for Unit 1 and Unit 2
+                    Calculates exact thermal requirements by dynamically factoring in power usage from feedwater,
+                    condenser, and recirculation pumps.
                 </p>
             </div>
         </div>
@@ -129,8 +126,7 @@
         <div
             class="cyber-panel rounded-2xl p-8 border border-[#00f0ff]/20 bg-[#11141a]/40 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div class="md:col-span-8 flex flex-col gap-4">
-                <span
-                    class="px-3 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] font-mono text-xs font-bold w-fit">CURRENT
+                <span class="px-3 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] font-mono text-xs font-bold w-fit">CURRENT
                     BUILD DETAILS</span>
                 <h3 class="text-2xl font-bold">Release Package: v{{ latest_version }}</h3>
                 <div class="grid grid-cols-2 gap-4 text-xs font-mono text-slate-400">
@@ -160,18 +156,17 @@
     <section id="feedback" class="scroll-mt-24 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div class="lg:col-span-5 flex flex-col gap-4">
             <h2 class="text-3xl font-extrabold tracking-tight font-reactor text-[#00f0ff] uppercase">
-                Submit Suggestions
+                Send Feedback
             </h2>
             <div class="h-1 w-16 bg-[#00f0ff] rounded"></div>
             <p class="text-slate-400 text-sm leading-relaxed">
-                Have an idea to improve the overlay layout, Recirculation calculations, or hotkeys? Send it directly
-                to our core developers.
+                Have an idea or a suggestion to improve the calculator? Send it directly to the developer.
             </p>
             <div
                 class="text-xs text-slate-500 font-mono flex flex-col gap-1 bg-[#0b0d12] p-4 rounded border border-slate-900">
-                <div>// SUGGESTION/FEEDBACK RULES</div>
-                <div>1. Spammed suggestions will result in IP address blacklisting.</div>
-                <div>2. Rate limited to 1 entry per 12 hours.</div>
+                <div>// SUGGESTION / FEEDBACK GUIDELINES</div>
+                <div>1. Please do not spam suggestions.</div>
+                <div>2. Submissions are limited to 1 suggestion every 12 hours.</div>
             </div>
         </div>
 
@@ -192,10 +187,8 @@
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <label for="suggestion" class="text-xs font-mono text-slate-400">FEEDBACK / DETAILED
-                        SUGGESTION</label>
-                    <textarea id="suggestion" required rows="4"
-                        placeholder="Describe your feature request or solver improvements..."
+                    <label for="suggestion" class="text-xs font-mono text-slate-400">SUGGESTION OR FEEDBACK</label>
+                    <textarea id="suggestion" required rows="4" placeholder="Write your suggestion or feedback here..."
                         class="input-cyber px-4 py-3 rounded-lg text-sm resize-none"></textarea>
                 </div>
 

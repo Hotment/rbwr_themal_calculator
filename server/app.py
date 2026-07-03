@@ -133,6 +133,13 @@ def get_authenticated_user():
             
     return None
 
+def get_host_url(req):
+    scheme = req.headers.get("X-Forwarded-Proto") or req.scheme
+    host = req.headers.get("X-Forwarded-Host") or req.headers.get("Host") or req.host
+    if scheme and host:
+        return f"{scheme}://{host}".rstrip('/')
+    return req.host_url.rstrip('/')
+
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -162,7 +169,7 @@ def admin_required(f):
             if not is_basic_auth:
                 origin = request.headers.get("Origin")
                 referer = request.headers.get("Referer")
-                host_url = request.host_url.rstrip('/')
+                host_url = get_host_url(request)
                 
                 origin_ok = True
                 if origin:
@@ -677,7 +684,7 @@ def admin_login():
     if request.method == "POST":
         origin = request.headers.get("Origin")
         referer = request.headers.get("Referer")
-        host_url = request.host_url.rstrip('/')
+        host_url = get_host_url(request)
         
         origin_ok = True
         if origin:

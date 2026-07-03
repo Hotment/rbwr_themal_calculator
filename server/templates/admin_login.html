@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBWR TTPC Server - Administrative Secure Access</title>
+    <title>Admin Login - RBWR APRM Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -128,17 +128,14 @@
 
             <h1
                 class="font-reactor text-3xl tracking-widest text-[#00f0ff] uppercase select-none drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]">
-                RBWR TTPC SYSTEM</h1>
-            <span class="text-[10px] text-slate-500 font-mono tracking-[0.25em] block">// SECURE ADMINISTRATIVE PORTAL
-                //</span>
+                Admin Login</h1>
+            <span class="text-[10px] text-slate-500 font-mono tracking-[0.25em] block">// APRM Calculator Admin //</span>
         </div>
 
         <div class="cyber-panel glow-cyan p-8 rounded-2xl flex flex-col gap-6">
             <div class="border-b border-slate-800/80 pb-4">
-                <h2 class="text-sm font-bold tracking-widest accent-cyan font-reactor uppercase">[ SECURE access
-                    clearance ]</h2>
-                <p class="text-xs text-slate-400 font-mono mt-1.5 leading-relaxed">Enter secure credentials to establish
-                    authenticated control session.</p>
+                <h2 class="text-sm font-bold tracking-widest accent-cyan font-reactor uppercase">Login</h2>
+                <p class="text-xs text-slate-400 font-mono mt-1.5 leading-relaxed">Enter your administrator credentials to log in.</p>
             </div>
 
             {% if error %}
@@ -152,7 +149,7 @@
                     </path>
                 </svg>
                 <div class="flex flex-col gap-0.5">
-                    <span class="text-[10px] font-mono font-bold text-[#ff003c] tracking-widest">ACCESS DENIED</span>
+                    <span class="text-[10px] font-mono font-bold text-[#ff003c] tracking-widest">ERROR</span>
                     <p class="text-xs text-slate-300 font-mono font-medium leading-relaxed">{{ error }}</p>
                 </div>
             </div>
@@ -162,8 +159,7 @@
                 <input type="hidden" name="next" value="{{ next_url or '/admin' }}">
 
                 <div class="flex flex-col gap-2">
-                    <label for="username" class="text-[10px] font-mono font-bold text-slate-400 tracking-wider">OPERATOR
-                        IDENTIFIER</label>
+                    <label for="username" class="text-[10px] font-mono font-bold text-slate-400 tracking-wider">USERNAME</label>
                     <div class="input-container flex items-center rounded-xl px-4 py-0.5">
                         <svg class="w-5 h-5 text-slate-500 shrink-0 mr-3" fill="none" stroke="currentColor"
                             stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -178,8 +174,7 @@
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label for="password" class="text-[10px] font-mono font-bold text-slate-400 tracking-wider">ACCESS
-                        SECRET KEY</label>
+                    <label for="password" class="text-[10px] font-mono font-bold text-slate-400 tracking-wider">PASSWORD</label>
                     <div class="input-container flex items-center rounded-xl px-4 py-0.5">
                         <svg class="w-5 h-5 text-slate-500 shrink-0 mr-3" fill="none" stroke="currentColor"
                             stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -224,13 +219,13 @@
                         </path>
                     </svg>
 
-                    <span id="submit-text">ESTABLISH CLEARANCE</span>
+                    <span id="submit-text">LOG IN</span>
                 </button>
             </form>
         </div>
 
         <div class="text-center flex justify-center items-center gap-4 text-xs font-mono text-slate-500">
-            <a href="/" class="hover:text-slate-300 transition hover:underline">Return to Terminal Portal</a>
+            <a href="/" class="hover:text-slate-300 transition hover:underline">Return to Homepage</a>
         </div>
 
     </div>
@@ -260,7 +255,7 @@
             btn.disabled = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed');
             spinner.classList.remove('hidden');
-            text.innerText = 'AUTHENTICATING...';
+            text.innerText = 'LOGGING IN...';
         }
     </script>
 </body>

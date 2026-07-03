@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBWR TTPC Server - Administrative Center</title>
+    <title>Admin Panel - RBWR APRM Calculator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -106,8 +106,8 @@
                 </div>
             </div>
             <div>
-                <h1 class="font-reactor text-sm tracking-wider text-slate-200">ADMIN MODULE</h1>
-                <p class="text-[8px] text-slate-500 font-mono tracking-widest">// SYS.ADMIN.CORE</p>
+                <h1 class="font-reactor text-sm tracking-wider text-slate-200">Admin Panel</h1>
+                <p class="text-[8px] text-slate-500 font-mono tracking-widest">APRM Calculator</p>
             </div>
         </div>
 
@@ -120,7 +120,7 @@
                         d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z">
                     </path>
                 </svg>
-                <span>CONTROL CENTER</span>
+                <span>Overview</span>
             </a>
 
             <a href="/admin/suggestions" id="nav-suggestions"
@@ -131,7 +131,7 @@
                         d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.12 2.95 2.68 3.22 1.24.22 2.5.34 3.79.34 1.29 0 2.55-.12 3.79-.34 1.56-.27 2.68-1.63 2.68-3.22V8.25A3.75 3.75 0 0012.75 4.5h-1.5a3.75 3.75 0 00-3.75 3.75v5.27h-.001z">
                     </path>
                 </svg>
-                <span>SUGGESTIONS FEED</span>
+                <span>Suggestions</span>
             </a>
 
             <a href="/admin/crashes" id="nav-crashes"
@@ -142,7 +142,7 @@
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                     </path>
                 </svg>
-                <span>CRASH RECORDS</span>
+                <span>Crash Logs</span>
             </a>
 
             {% if is_root %}
@@ -154,16 +154,16 @@
                         d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z">
                     </path>
                 </svg>
-                <span>ADMIN ACCOUNTS</span>
+                <span>Manage Admins</span>
             </a>
             {% endif %}
         </nav>
 
         <div class="p-4 border-t border-slate-800/80 bg-[#090b0e] flex flex-col gap-2">
             <div class="flex items-center justify-between text-[10px] font-mono text-slate-500">
-                <span>ROLE:</span>
+                <span>Role:</span>
                 <span class="flex items-center gap-1.5 {% if is_root %}text-cyan-400{% else %}text-emerald-500{% endif %} font-bold">
-                    {% if is_root %}ROOT PRIVILEGES{% else %}ADMINISTRATOR{% endif %}
+                    {% if is_root %}Owner{% else %}Admin{% endif %}
                 </span>
             </div>
             <div class="text-xs font-mono text-slate-300 font-bold truncate">{{ username }}</div>
@@ -181,10 +181,8 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-widest accent-cyan font-reactor">[ // CENTRAL CONTROL MODULE
-                        ]</h1>
-                    <p class="text-xs text-slate-500 font-mono mt-1">Logged in as: {{ username }} // Session Status:
-                        Active</p>
+                    <h1 class="text-2xl font-bold tracking-widest accent-cyan font-reactor">Overview</h1>
+                    <p class="text-xs text-slate-500 font-mono mt-1">Logged in as {{ username }}</p>
                 </div>
                 <div class="flex gap-4 font-mono text-xs">
                     <a href="/"
@@ -208,12 +206,10 @@
                     <div>
                         <h2
                             class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#00f0ff] transition duration-300">
-                            SUGGESTIONS FEED</h2>
-                        <p class="text-xs text-slate-500 font-mono mt-1">// INDEX: feedback_suggestions.db</p>
+                            Suggestions Feed</h2>
                     </div>
                     <p class="text-sm text-slate-400 leading-relaxed mt-2">
-                        Review incoming feature suggestions, accept or decline proposals, and manage individual user IP
-                        prohibitions directly.
+                        Review incoming user suggestions, accept or decline proposals, and ban or unban user IPs.
                     </p>
                 </a>
 
@@ -231,12 +227,10 @@
                     <div>
                         <h2
                             class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#ff003c] transition duration-300">
-                            CRASH RECORDS</h2>
-                        <p class="text-xs text-slate-500 font-mono mt-1">// INDEX: application_crashes.db</p>
+                            Crash Records</h2>
                     </div>
                     <p class="text-sm text-slate-400 leading-relaxed mt-2">
-                        Inspect application exception traceback details, check platform configuration telemetry, and
-                        review diagnostic variables logs.
+                        View diagnostic variables, application tracebacks, logs, and system details for crashes.
                     </p>
                 </a>
             </div>
@@ -247,10 +241,8 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">[ // FEEDBACK & SUGGESTIONS
-                        CENTRAL ]</h2>
-                    <p class="text-xs text-slate-500 font-mono mt-1">// DATASET: feedback_suggestions.db // SCOPE:
-                        Operator view</p>
+                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">Suggestions</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">Review feedback and manage user requests.</p>
                 </div>
                 <div
                     class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
@@ -263,8 +255,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 <div class="lg:col-span-1 flex flex-col gap-4">
                     <div class="cyber-panel p-5 rounded-xl border border-slate-800/80">
-                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">[ BANNED
-                            IPS ]</h3>
+                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Banned IPs</h3>
                         <div id="banned-ips-container" class="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
                             <p class="text-xs text-slate-500 italic font-mono">Loading bans...</p>
                         </div>
@@ -298,10 +289,8 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-red font-reactor">[ // APPLICATION CRASH LOG
-                        DECK ]</h2>
-                    <p class="text-xs text-slate-500 font-mono mt-1">// DATASET: application_crashes.db // SCOPE: Fatal
-                        Errors Log</p>
+                    <h2 class="text-xl font-bold tracking-widest accent-red font-reactor">Crash Reports</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">View error tracebacks and diagnostic logs.</p>
                 </div>
                 <div
                     class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
@@ -322,15 +311,15 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">[ // ADMINISTRATOR ACCESS ACCOUNTS ]</h2>
-                    <p class="text-xs text-slate-500 font-mono mt-1">// CATALOG: admins.json // PRIVILEGES: Root Access</p>
+                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">Admin Accounts</h2>
+                    <p class="text-xs text-slate-500 font-mono mt-1">Manage administrator accounts and permissions.</p>
                 </div>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <!-- Create Admin Account Card -->
                 <div class="cyber-panel p-6 rounded-xl border border-slate-800/80 flex flex-col gap-4">
-                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">[ // CREATE NEW ADMIN ]</h3>
+                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">Create New Admin</h3>
                     <form id="create-admin-form" onsubmit="handleCreateAdmin(event)" class="flex flex-col gap-4 text-xs font-mono">
                         <div class="flex flex-col gap-1">
                             <label class="text-slate-500 uppercase">Username</label>
@@ -351,7 +340,7 @@
 
                 <!-- Admin Accounts List -->
                 <div class="lg:col-span-2 cyber-panel p-6 rounded-xl border border-slate-800/80">
-                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">[ // ACTIVE ADMINISTRATORS ]</h3>
+                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Active Administrators</h3>
                     <div id="accounts-list-container" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
                         <p class="text-xs text-slate-500 italic font-mono">Loading accounts...</p>
                     </div>
@@ -365,7 +354,7 @@
     <div id="ban-modal"
         class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="cyber-panel glow-cyan p-6 rounded-2xl max-w-sm w-full flex flex-col gap-4">
-            <h3 class="text-sm font-bold tracking-widest accent-red font-reactor">[ // ENFORCE IP BAN PROTOCOL ]</h3>
+            <h3 class="text-sm font-bold tracking-widest accent-red font-reactor">Ban IP Address</h3>
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Target IP Address</label>
                 <input type="text" id="ban-ip-field" readonly
@@ -686,12 +675,12 @@
                         
                         <div class="flex flex-col gap-3 font-mono">
                             <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
-                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Traceback Exception Details</summary>
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Traceback Details</summary>
                                 <pre class="text-xs text-rose-500 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-rose-950/40 select-text cursor-text">${escapeHtml(c.traceback)}</pre>
                             </details>
                             
                             <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
-                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Diagnostics Log Data</summary>
+                                <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Diagnostic Log</summary>
                                 <pre class="text-xs text-slate-300 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-slate-800 select-text cursor-text">${escapeHtml(c.log_data || 'No logs captured.')}</pre>
                             </details>
                         </div>
