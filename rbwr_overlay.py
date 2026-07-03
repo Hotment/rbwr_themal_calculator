@@ -802,7 +802,7 @@ class OverlayApp:
         title_bar.pack_propagate(False)
         self.make_draggable(title_bar)
 
-        title_lbl = tk.Label(title_bar, text=f" [ APRM MONITOR v{__version__} // SYS OK ]", bg=BG_HEADER, fg=ACCENT_CYAN,
+        title_lbl = tk.Label(title_bar, text=f" APRM Calculator v{__version__}", bg=BG_HEADER, fg=ACCENT_CYAN,
                              font=("Consolas", 9, "bold"))
         title_lbl.pack(side="left", padx=5)
         self.make_draggable(title_lbl)
@@ -859,7 +859,7 @@ class OverlayApp:
         input_card.grid_columnconfigure(0, weight=1)
         input_card.grid_columnconfigure(1, weight=1)
 
-        lbl_in_header = tk.Label(input_card, text="[ // CORE CONTROL IN ]", bg=BG_MAIN, fg=ACCENT_GREEN, font=("Consolas", 8, "bold"))
+        lbl_in_header = tk.Label(input_card, text="INPUTS", bg=BG_MAIN, fg=ACCENT_GREEN, font=("Consolas", 8, "bold"))
         lbl_in_header.grid(row=0, column=0, pady=(6, 6), sticky="w", padx=10)
         self.make_draggable(lbl_in_header)
 
@@ -908,7 +908,7 @@ class OverlayApp:
                                 width=12, justify="center")
         self.ent_rtp.grid(row=4, column=0, sticky="w", pady=(0, 10), padx=10)
 
-        lbl_out_header = tk.Label(input_card, text="[ // TELEMETRY OUT ]", bg=BG_MAIN, fg=ACCENT_CYAN, font=("Consolas", 8, "bold"))
+        lbl_out_header = tk.Label(input_card, text="OUTPUTS", bg=BG_MAIN, fg=ACCENT_CYAN, font=("Consolas", 8, "bold"))
         lbl_out_header.grid(row=0, column=1, pady=(6, 6), sticky="w", padx=10)
         self.make_draggable(lbl_out_header)
 
@@ -928,7 +928,7 @@ class OverlayApp:
         self.lbl_feed_val.grid(row=4, column=1, sticky="w", pady=(0, 10), padx=10)
         self.make_draggable(self.lbl_feed_val)
 
-        self.lbl_debug = tk.Label(container, text="[ OCR DIAG: STANDBY ]", bg=BG_MAIN, fg=TEXT_MUTED,
+        self.lbl_debug = tk.Label(container, text="OCR: Standby", bg=BG_MAIN, fg=TEXT_MUTED,
                                   font=("Consolas", 7))
         self.lbl_debug.pack(side="bottom", fill="x", pady=(4, 0))
 
@@ -1647,7 +1647,7 @@ class OverlayApp:
                 color = ACCENT_GOLD
             elif level == "info":
                 color = ACCENT_CYAN
-            self.run_on_main_thread(lambda: self.lbl_debug.config(text=f"[ OCR: {message.upper()} ]", fg=color))
+            self.run_on_main_thread(lambda: self.lbl_debug.config(text=f"OCR: {message}", fg=color))
 
     def update_unit_ui_state(self):
         if hasattr(self, 'btn_u1') and hasattr(self, 'btn_u2') and self.btn_u1.winfo_exists() and self.btn_u2.winfo_exists():
