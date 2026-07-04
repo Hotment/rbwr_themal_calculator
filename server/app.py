@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 from urllib.parse import quote
+from flask_sock import Sock
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FILES_DIR = os.path.join(BASE_DIR, "files")
@@ -23,16 +25,125 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 # Ensure files directory exists
 os.makedirs(FILES_DIR, exist_ok=True)
-
 load_dotenv()
 
-from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
+
+class CustomFormatter(logging.Formatter):
+    LEVEL_COLORS = {
+        logging.DEBUG: "\033[34m",
+        logging.INFO: "\033[0m",
+        logging.WARNING: "\033[33m",
+        logging.ERROR: "\033[31m",
+        logging.CRITICAL: "\033[37;41m",
+    }
+
+    def format(self, record):
+        log_color = self.LEVEL_COLORS.get(record.levelno, "\033[0m")
+        log_message = super().format(record)
+        return f"{log_color}{log_message.encode(errors='replace').decode()}\033[0m"
+
+log_format = '[%(asctime)s | %(levelname)s | %(name)s]: %(message)s'
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(CustomFormatter(log_format))
+
+gunicorn_error_logger = logging.getLogger('gunicorn.error')
 
 app = Flask(
     __name__,
     template_folder="templates"
 )
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+app.logger.handlers = [stream_handler]
+app.logger.propagate = False
+app.logger.setLevel(logging.INFO)
+
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.handlers = []
+
+logger = app.logger.getChild("main")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1, x_host=1, x_prefix=1)
+
+sock = Sock(app)
+active_connections = set()
+
+def get_dashboard_payload_data():
+    sug_data = load_suggestions()
+    suggestions = sug_data.get("suggestions", [])
+    suggestions = sorted(suggestions, key=lambda s: s.get("timestamp", ""), reverse=True)
+    
+    ban_data = load_banned_ips()
+    banned_ips = ban_data.get("banned", {})
+    
+    crash_data = load_crashes()
+    crashes = crash_data.get("crashes", [])
+    crashes = sorted(crashes, key=lambda c: c.get("timestamp", ""), reverse=True)
+    
+    return {
+        "suggestions": suggestions,
+        "banned_ips": banned_ips,
+        "crashes": crashes
+    }
+
+def get_accounts_payload_data():
+    admins_data = load_admins()
+    admins_list = []
+    for u, info in admins_data.get("admins", {}).items():
+        admins_list.append({
+            "username": u,
+            "created_at": info.get("created_at")
+        })
+    return {"admins": admins_list}
+
+def broadcast_update(data_type):
+    if data_type == "dashboard":
+        payload = {
+            "type": "dashboard",
+            "data": get_dashboard_payload_data()
+        }
+    elif data_type == "accounts":
+        payload = {
+            "type": "accounts",
+            "data": get_accounts_payload_data()
+        }
+    else:
+        return
+        
+    message = json.dumps(payload)
+    for ws in list(active_connections):
+        try:
+            ws.send(message)
+        except Exception:
+            active_connections.discard(ws)
+
+@sock.route('/admin/ws')
+def admin_ws(ws):
+    if not session.get("admin_logged_in"):
+        ws.close(1008)
+        return
+        
+    active_connections.add(ws)
+    
+    try:
+        initial_payload = {
+            "type": "all",
+            "dashboard": get_dashboard_payload_data(),
+            "accounts": get_accounts_payload_data() if is_root_user(session.get("username") or "") else None
+        }
+        ws.send(json.dumps(initial_payload))
+    except Exception:
+        active_connections.discard(ws)
+        return
+        
+    try:
+        while True:
+            message = ws.receive()
+            if message is None:
+                break
+    except Exception:
+        pass
+    finally:
+        active_connections.discard(ws)
 
 _secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not _secret_key:
@@ -57,6 +168,11 @@ def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    
+    ip = request.remote_addr or "unknown"
+    protocol = request.environ.get('SERVER_PROTOCOL', 'HTTP/1.1')
+    logger.info(f'{ip} - - "{request.method} {request.path} {protocol}" {response.status_code}')
+    
     return response
 
 # --- Authentication & Persistence Helpers ---
@@ -148,8 +264,7 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         username = get_authenticated_user()
         if not username:
-            if request.path.startswith("/admin/suggestions/data") or \
-               request.path.startswith("/admin/suggestions/status") or \
+            if request.path.startswith("/admin/suggestions/status") or \
                request.path.startswith("/admin/suggestions/ban") or \
                request.path.startswith("/admin/suggestions/unban"):
                 return Response(
@@ -443,6 +558,7 @@ def submit_suggestion():
     }
     suggestions.append(new_sug)
     save_suggestions(data)
+    broadcast_update("dashboard")
     return jsonify({"message": "Feedback submitted successfully.", "id": new_id})
 
 @app.route("/crashes", methods=["POST"])
@@ -478,6 +594,7 @@ def submit_crash():
     }
     crashes.append(new_crash)
     save_crashes(data)
+    broadcast_update("dashboard")
     return jsonify({"message": "Crash report submitted successfully.", "id": new_id})
 
 # --- Admin API / Dashboard ---
@@ -497,6 +614,7 @@ def update_suggestion_status(username):
         if s.get("id") == payload.id:
             s["status"] = payload.status
             save_suggestions(data)
+            broadcast_update("dashboard")
             return jsonify({"message": "Status updated successfully.", "id": payload.id, "status": payload.status})
     return jsonify({"detail": f"Feedback/suggestion with ID {payload.id} not found."}), 404
 
@@ -522,6 +640,7 @@ def ban_ip(username):
         "reason": payload.reason.strip() or "No reason provided"
     }
     save_banned_ips(data)
+    broadcast_update("dashboard")
     return jsonify({"message": f"IP {payload.ip} banned successfully.", "ip": payload.ip})
 
 @app.route("/admin/suggestions/unban", methods=["POST"])
@@ -538,28 +657,9 @@ def unban_ip(username):
     if payload.ip in banned:
         del banned[payload.ip]
         save_banned_ips(data)
+        broadcast_update("dashboard")
         return jsonify({"message": f"IP {payload.ip} unbanned successfully.", "ip": payload.ip})
     return jsonify({"detail": f"IP {payload.ip} is not currently banned."}), 404
-
-@app.route("/admin/suggestions/data", methods=["GET"])
-@admin_required
-def get_suggestions_data(username):
-    sug_data = load_suggestions()
-    suggestions = sug_data.get("suggestions", [])
-    suggestions = sorted(suggestions, key=lambda s: s.get("timestamp", ""), reverse=True)
-    
-    ban_data = load_banned_ips()
-    banned_ips = ban_data.get("banned", {})
-    
-    crash_data = load_crashes()
-    crashes = crash_data.get("crashes", [])
-    crashes = sorted(crashes, key=lambda c: c.get("timestamp", ""), reverse=True)
-    
-    return jsonify({
-        "suggestions": suggestions,
-        "banned_ips": banned_ips,
-        "crashes": crashes
-    })
 
 @app.route("/admin/suggestions", methods=["GET"])
 @admin_required
@@ -590,20 +690,6 @@ class CreateAdminPayload(BaseModel):
 class DeleteAdminPayload(BaseModel):
     username: str
 
-@app.route("/admin/accounts/data", methods=["GET"])
-@admin_required
-def get_accounts_data(username):
-    if not is_root_user(username):
-        return jsonify({"detail": "Forbidden - Root privileges required"}), 403
-    admins_data = load_admins()
-    admins_list = []
-    for u, info in admins_data.get("admins", {}).items():
-        admins_list.append({
-            "username": u,
-            "created_at": info.get("created_at")
-        })
-    return jsonify({"admins": admins_list})
-
 @app.route("/admin/accounts/create", methods=["POST"])
 @admin_required
 def create_admin_account(username):
@@ -630,6 +716,7 @@ def create_admin_account(username):
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     save_admins(admins_data)
+    broadcast_update("accounts")
     return jsonify({"message": f"Admin account '{new_user}' created successfully."})
 
 @app.route("/admin/accounts/delete", methods=["POST"])
@@ -649,6 +736,7 @@ def delete_admin_account(username):
     if target_user in admins:
         del admins[target_user]
         save_admins(admins_data)
+        broadcast_update("accounts")
         return jsonify({"message": f"Admin account '{target_user}' removed successfully."})
     return jsonify({"detail": f"Admin account '{target_user}' not found."}), 404
 

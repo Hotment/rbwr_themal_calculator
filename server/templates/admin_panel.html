@@ -162,7 +162,8 @@
         <div class="p-4 border-t border-slate-800/80 bg-[#090b0e] flex flex-col gap-2">
             <div class="flex items-center justify-between text-[10px] font-mono text-slate-500">
                 <span>Role:</span>
-                <span class="flex items-center gap-1.5 {% if is_root %}text-cyan-400{% else %}text-emerald-500{% endif %} font-bold">
+                <span
+                    class="flex items-center gap-1.5 {% if is_root %}text-cyan-400{% else %}text-emerald-500{% endif %} font-bold">
                     {% if is_root %}Owner{% else %}Admin{% endif %}
                 </span>
             </div>
@@ -255,7 +256,8 @@
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 <div class="lg:col-span-1 flex flex-col gap-4">
                     <div class="cyber-panel p-5 rounded-xl border border-slate-800/80">
-                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Banned IPs</h3>
+                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Banned IPs
+                        </h3>
                         <div id="banned-ips-container" class="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
                             <p class="text-xs text-slate-500 italic font-mono">Loading bans...</p>
                         </div>
@@ -319,8 +321,10 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <!-- Create Admin Account Card -->
                 <div class="cyber-panel p-6 rounded-xl border border-slate-800/80 flex flex-col gap-4">
-                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">Create New Admin</h3>
-                    <form id="create-admin-form" onsubmit="handleCreateAdmin(event)" class="flex flex-col gap-4 text-xs font-mono">
+                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">Create New
+                        Admin</h3>
+                    <form id="create-admin-form" onsubmit="handleCreateAdmin(event)"
+                        class="flex flex-col gap-4 text-xs font-mono">
                         <div class="flex flex-col gap-1">
                             <label class="text-slate-500 uppercase">Username</label>
                             <input type="text" id="new-admin-username" required placeholder="Enter username"
@@ -340,7 +344,8 @@
 
                 <!-- Admin Accounts List -->
                 <div class="lg:col-span-2 cyber-panel p-6 rounded-xl border border-slate-800/80">
-                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Active Administrators</h3>
+                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Active
+                        Administrators</h3>
                     <div id="accounts-list-container" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
                         <p class="text-xs text-slate-500 italic font-mono">Loading accounts...</p>
                     </div>
@@ -415,8 +420,7 @@
                 });
             }
 
-            fetchDashboardData();
-            setInterval(fetchDashboardData, 5000);
+            connectWebSocket();
         });
 
         function bindNavLink(id, viewName, path) {
@@ -515,24 +519,60 @@
             });
         }
 
-        async function fetchDashboardData() {
-            try {
-                const response = await fetch('/admin/suggestions/data');
-                if (response.ok) {
-                    const data = await response.json();
-                    latestData = data;
-                    bannedIps = data.banned_ips;
-                    updateStats(data);
-                    renderBannedIps(data.banned_ips);
-                    renderSuggestions(data.suggestions);
-                    renderCrashes(data.crashes);
+        let ws;
+        let reconnectDelay = 1000;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const socketUrl = `${protocol}//${window.location.host}/admin/ws`;
+            ws = new WebSocket(socketUrl);
+
+            ws.onopen = () => {
+                console.log('Admin WebSocket connected.');
+                reconnectDelay = 1000;
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'all') {
+                        latestData = message.dashboard;
+                        bannedIps = message.dashboard.banned_ips;
+                        updateStats(message.dashboard);
+                        renderBannedIps(message.dashboard.banned_ips);
+                        renderSuggestions(message.dashboard.suggestions);
+                        renderCrashes(message.dashboard.crashes);
+
+                        if (IS_ROOT && message.accounts) {
+                            renderAccounts(message.accounts.admins);
+                        }
+                    } else if (message.type === 'dashboard') {
+                        latestData = message.data;
+                        bannedIps = message.data.banned_ips;
+                        updateStats(message.data);
+                        renderBannedIps(message.data.banned_ips);
+                        renderSuggestions(message.data.suggestions);
+                        renderCrashes(message.data.crashes);
+                    } else if (message.type === 'accounts') {
+                        if (IS_ROOT && message.data) {
+                            renderAccounts(message.data.admins);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error handling WebSocket message:', err);
                 }
-                if (IS_ROOT) {
-                    fetchAccountsData();
-                }
-            } catch (err) {
-                console.error('Error fetching dashboard data:', err);
-            }
+            };
+
+            ws.onclose = () => {
+                console.warn(`Admin WebSocket closed. Reconnecting in ${reconnectDelay}ms...`);
+                setTimeout(connectWebSocket, reconnectDelay);
+                reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('Admin WebSocket error:', err);
+                ws.close();
+            };
         }
 
         function updateStats(data) {
@@ -777,18 +817,6 @@
         }
 
         if (IS_ROOT) {
-            window.fetchAccountsData = async function() {
-                try {
-                    const response = await fetch('/admin/accounts/data');
-                    if (response.ok) {
-                        const data = await response.json();
-                        renderAccounts(data.admins);
-                    }
-                } catch (err) {
-                    console.error('Error fetching accounts data:', err);
-                }
-            };
-
             function renderAccounts(admins) {
                 const container = document.getElementById('accounts-list-container');
                 if (!container) return;
@@ -813,12 +841,12 @@
                 container.innerHTML = html;
             }
 
-            window.handleCreateAdmin = async function(e) {
+            window.handleCreateAdmin = async function (e) {
                 e.preventDefault();
                 const usernameInput = document.getElementById('new-admin-username');
                 const passwordInput = document.getElementById('new-admin-password');
                 const btn = document.getElementById('create-admin-btn');
-                
+
                 const username = usernameInput.value.trim();
                 const password = passwordInput.value;
 
@@ -853,7 +881,7 @@
                 }
             };
 
-            window.deleteAdmin = async function(username) {
+            window.deleteAdmin = async function (username) {
                 if (!confirm(`Are you sure you want to remove admin account '${username}'?`)) {
                     return;
                 }
