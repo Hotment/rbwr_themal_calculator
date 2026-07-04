@@ -26,10 +26,13 @@ os.makedirs(FILES_DIR, exist_ok=True)
 
 load_dotenv()
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 app = Flask(
     __name__,
     template_folder="templates"
 )
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
 _secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not _secret_key:

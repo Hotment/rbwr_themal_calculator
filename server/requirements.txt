@@ -2,3 +2,4 @@ python-dotenv
 pydantic
 Flask
 requests
+gunicorn
