@@ -12,6 +12,7 @@ server/crashes.json
 server/suggestions.json
 server/banned_ips.json
 server/admins.json
+server/gunicorn.conf.py
 
 venv
 *build

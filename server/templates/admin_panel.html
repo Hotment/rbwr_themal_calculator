@@ -521,6 +521,7 @@
 
         let ws;
         let reconnectDelay = 1000;
+        let heartbeatInterval = null;
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -530,6 +531,12 @@
             ws.onopen = () => {
                 console.log('Admin WebSocket connected.');
                 reconnectDelay = 1000;
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
             };
 
             ws.onmessage = (event) => {
@@ -565,6 +572,10 @@
 
             ws.onclose = () => {
                 console.warn(`Admin WebSocket closed. Reconnecting in ${reconnectDelay}ms...`);
+                if (heartbeatInterval) {
+                    clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
+                }
                 setTimeout(connectWebSocket, reconnectDelay);
                 reconnectDelay = Math.min(reconnectDelay * 2, 30000);
             };

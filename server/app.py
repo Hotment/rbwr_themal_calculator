@@ -140,6 +140,12 @@ def admin_ws(ws):
             message = ws.receive()
             if message is None:
                 break
+            try:
+                data = json.loads(message)
+                if data.get("type") == "ping":
+                    ws.send(json.dumps({"type": "pong"}))
+            except Exception:
+                pass
     except Exception:
         pass
     finally:
