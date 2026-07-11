@@ -1,155 +1,191 @@
 {% extends "base.html" %}
 
-{% block title %}RBWR APRM Calculator - Online Telemetry Solver{% endblock %}
+{% block title %}RBWR Calculator - Telemetry Solver{% endblock %}
 
 {% block nav %}
-<a href="/" class="hover:text-white transition">HOME</a>
+<a href="/" class="hover:text-white transition-colors">Home</a>
 <a href="https://github.com/Hotment/rbwr_themal_calculator/releases/latest"
-    class="hover:text-[#00f0ff] transition">DOWNLOAD APP</a>
+    class="hover:text-white transition-colors">Download App</a>
 <a href="/admin/suggestions"
-    class="px-4 py-2 border border-[#ffaa00]/30 text-[#ffaa00] hover:bg-[#ffaa00]/10 hover:border-[#ffaa00] transition rounded font-mono text-xs">ADMIN
-    PANEL</a>
+    class="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all text-xs font-medium border border-white/5">Admin</a>
 {% endblock %}
 
 {% block mobile_nav %}
-<a href="/" class="px-3 py-1.5 border border-slate-700 text-slate-300 rounded font-mono text-xs">HOME</a>
+<a href="/" class="px-3 py-1.5 border border-white/10 text-gray-300 rounded font-medium text-xs">Home</a>
 {% endblock %}
 
 {% block content %}
-<main class="flex-grow max-w-7xl mx-auto px-6 py-12 w-full flex flex-col justify-center items-center gap-10">
+<main class="flex-grow max-w-6xl mx-auto px-6 py-6 w-full flex flex-col justify-center items-center gap-6">
 
-    <div class="text-center flex flex-col items-center gap-3">
-        <h1
-            class="text-3xl md:text-4xl font-extrabold tracking-tight font-reactor text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 uppercase">
-            Online Calculator
+    <div class="text-center flex flex-col items-center gap-4 max-w-2xl">
+        <h1 class="text-4xl md:text-5xl font-display font-semibold tracking-tight text-white">
+            Reactor Power Calculator
         </h1>
-        <div class="h-1 w-20 bg-gradient-to-r from-[#00f0ff] to-[#39ff14] rounded"></div>
-        <p class="text-slate-500 text-sm max-w-md">
-            Calculate reactor power requirements, flow rates, and auxiliary usage in your browser.
-        </p>
     </div>
 
-    <div
-        class="cyber-panel rounded-2xl p-6 md:p-8 border border-[#00f0ff]/15 bg-[#11141a]/60 backdrop-blur w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div class="lg:col-span-5 flex flex-col gap-6">
-            <div class="flex gap-2 p-1 bg-[#0b0d12] rounded-lg border border-slate-900 w-full">
+    <div class="premium-glass rounded-2xl p-2 w-full grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden shadow-2xl">
+
+        <!-- Left Panel: Controls -->
+        <div class="lg:col-span-5 flex flex-col p-5 lg:p-6 gap-6 border-b lg:border-b-0 lg:border-r border-white/5">
+
+            <div class="flex gap-2 p-1.5 bg-black/20 rounded-xl border border-white/5 w-full">
                 <button id="tab-unit-1" onclick="selectUnit(1)"
-                    class="flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20">
-                    UNIT 1
+                    class="flex-1 py-2 rounded-lg font-medium text-sm transition-all duration-200 bg-white/10 text-white shadow-sm">
+                    Unit 1
                 </button>
                 <button id="tab-unit-2" onclick="selectUnit(2)"
-                    class="flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 text-slate-400 hover:text-white">
-                    UNIT 2
+                    class="flex-1 py-2 rounded-lg font-medium text-sm transition-all duration-200 text-gray-400 hover:text-gray-200 hover:bg-white/5">
+                    Unit 2
                 </button>
             </div>
 
-            <div class="flex flex-col gap-4">
-                <div class="flex flex-col gap-1.5">
-                    <label for="web-demand" class="text-xs font-mono text-slate-400">GENERATOR DEMAND (MWe)</label>
-                    <div class="flex items-stretch w-full">
+            <div class="flex flex-col gap-6">
+                <!-- Demand Input -->
+                <div class="flex flex-col gap-2 group">
+                    <label for="web-demand"
+                        class="text-xs font-medium text-gray-400 group-focus-within:text-blue-400 transition-colors flex justify-between">
+                        <span>Generator Demand</span>
+                        <span class="font-mono text-gray-500">MWe</span>
+                    </label>
+                    <div class="flex items-stretch w-full h-11 shadow-sm">
                         <button type="button" onclick="adjustDemand(-10)"
-                            class="px-4 bg-[#0b0d12] hover:bg-[#00f0ff]/10 text-slate-400 hover:text-[#00f0ff] border border-white/10 rounded-l-lg transition font-mono font-bold text-xs select-none focus:outline-none focus:border-[#00f0ff]/30">
+                            class="px-4 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 border-r-0 rounded-l-xl transition-colors font-mono font-medium text-sm focus:outline-none">
                             -10
                         </button>
                         <div class="relative flex-grow">
-                            <input type="number" id="web-demand" step="any" min="0" placeholder="e.g. 1000"
+                            <input type="number" id="web-demand" step="any" min="0" placeholder="1000"
                                 oninput="onInputDemand()"
-                                class="input-cyber w-full px-4 py-3 text-center text-sm border-x-0 rounded-none h-full pr-12">
-                            <span
-                                class="absolute right-4 top-3.5 text-xs text-slate-500 font-mono pointer-events-none">MWe</span>
+                                class="premium-input w-full px-4 text-center text-sm border-y border-x-0 h-full font-mono">
                         </div>
                         <button type="button" onclick="adjustDemand(10)"
-                            class="px-4 bg-[#0b0d12] hover:bg-[#00f0ff]/10 text-slate-400 hover:text-[#00f0ff] border border-white/10 rounded-r-lg transition font-mono font-bold text-xs select-none focus:outline-none focus:border-[#00f0ff]/30">
+                            class="px-4 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 border-l-0 rounded-r-xl transition-colors font-mono font-medium text-sm focus:outline-none">
                             +10
                         </button>
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-1.5">
-                    <label for="web-rtp" class="text-xs font-mono text-slate-400" id="label-rtp">REACTOR THERMAL
-                        POWER (APRM%)</label>
-                    <div class="relative">
-                        <input type="number" id="web-rtp" step="any" min="0" max="250" placeholder="e.g. 100"
-                            oninput="onInputRTP()" class="input-cyber w-full px-4 py-3 rounded-lg text-sm pr-12">
-                        <span class="absolute right-4 top-3.5 text-xs text-slate-500 font-mono">%</span>
+                <!-- RTP Input -->
+                <div class="flex flex-col gap-2 group">
+                    <label for="web-rtp" id="label-rtp"
+                        class="text-xs font-medium text-gray-400 group-focus-within:text-blue-400 transition-colors flex justify-between">
+                        <span>Reactor Thermal Power</span>
+                        <span class="font-mono text-gray-500">APRM %</span>
+                    </label>
+                    <div class="relative h-11 shadow-sm">
+                        <input type="number" id="web-rtp" step="any" min="0" max="250" placeholder="100"
+                            oninput="onInputRTP()"
+                            class="premium-input w-full px-4 h-full rounded-xl text-sm font-mono transition-all">
                     </div>
                 </div>
 
-                <div class="border-t border-slate-900 pt-4 flex flex-col gap-4">
-                    <div class="flex items-center justify-between">
-                        <label for="recirc-toggle"
-                            class="text-xs font-mono text-slate-400 flex items-center gap-2.5 cursor-pointer">
-                            <input type="checkbox" id="recirc-toggle" onchange="toggleRecircOverride()"
-                                class="checkbox-cyber">
-                            RECIRCULATION SPEED OVERRIDE
-                        </label>
-                    </div>
-                    <div id="recirc-override-container" class="hidden flex-col gap-1.5 transition-all">
-                        <div class="relative">
+                <!-- Recirc Override -->
+                <div class="pt-6 border-t border-white/5 flex flex-col gap-4">
+                    <label for="recirc-toggle" class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="recirc-toggle" onchange="toggleRecircOverride()"
+                            class="premium-checkbox">
+                        <span
+                            class="text-sm font-medium text-gray-400 group-hover:text-gray-300 transition-colors">Manual
+                            Recirculation Override</span>
+                    </label>
+                    <div id="recirc-override-container" class="hidden flex-col gap-2 transition-all">
+                        <div class="relative h-11 shadow-sm mt-2">
                             <input type="number" id="web-recirc-override" step="any" min="0" max="100"
-                                placeholder="Enter pump speed % (0-100)" oninput="onInputRecircOverride()"
-                                class="input-cyber w-full px-4 py-3 rounded-lg text-sm pr-12">
-                            <span class="absolute right-4 top-3.5 text-xs text-slate-500 font-mono">%</span>
+                                placeholder="Speed % (0-100)" oninput="onInputRecircOverride()"
+                                class="premium-input w-full px-4 h-full rounded-xl text-sm font-mono">
+                            <span
+                                class="absolute right-4 top-3 text-xs text-gray-500 font-mono pointer-events-none">%</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-7 flex flex-col gap-6">
+        <!-- Right Panel: Results -->
+        <div class="lg:col-span-7 p-5 lg:p-6 flex flex-col bg-black/20">
+
             <div id="web-status-screen"
-                class="flex-grow rounded-xl bg-[#0b0d12] border border-[#00f0ff]/10 p-6 flex flex-col justify-between min-h-[220px] transition-all">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="text-xs text-slate-500 font-mono block">// CALCULATOR RESULTS</span>
-                        <span id="web-status-label"
-                            class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-[#39ff14] border border-emerald-900/30 uppercase mt-1 inline-block">
-                            SYSTEM OK
-                        </span>
-                    </div>
-                    <span class="text-[10px] font-mono text-slate-500" id="web-unit-header">UNIT 1 ACTIVE</span>
-                </div>
-
-                <div class="my-6 text-center">
-                    <div id="display-rtp"
-                        class="text-4xl md:text-5xl font-extrabold tracking-wide neon-text-cyan font-reactor">
-                        0.00% APRM
-                    </div>
-                    <div id="display-status-sub" class="text-[10px] font-mono text-slate-400 mt-2">
-                        ⚡ REACTOR POWER STATUS
-                    </div>
-                </div>
-
+                class="flex-grow rounded-xl bg-surfaceElevated border border-white/5 p-6 flex flex-col justify-center relative overflow-hidden transition-all duration-500 shadow-inner min-h-[220px]">
+                <!-- Decorative background elements -->
                 <div
-                    class="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-900 pt-4 text-xs font-mono text-slate-400">
-                    <div>FLOW: <span id="display-flow" class="text-white">0.00 kg/s</span></div>
-                    <div>E-LOAD: <span id="display-gen" class="text-white">0.00 MWe</span></div>
-                    <div>AUX USAGE: <span id="display-usage" class="text-white">0.00 MW</span></div>
-                    <div>EXPECTED RECIRC SPEED: <span id="display-recirc" class="text-white">28.00%</span></div>
+                    class="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2">
+                </div>
+
+                <div class="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+                            id="status-dot"></div>
+                        <span id="web-status-label"
+                            class="text-xs font-medium text-gray-400 tracking-wide uppercase">System Nominal</span>
+                    </div>
+                    <span class="text-[10px] font-mono text-gray-500 px-2 py-1 rounded bg-white/5 border border-white/5"
+                        id="web-unit-header">UNIT 1 ACTIVE</span>
+                </div>
+
+                <div class="text-center my-6 z-10">
+                    <div id="display-rtp"
+                        class="text-6xl md:text-7xl font-display font-light tracking-tight text-white mb-0 transition-colors duration-300 drop-shadow-sm">
+                        0.00<span class="text-3xl md:text-4xl text-gray-500 font-medium ml-1">%</span>
+                    </div>
+                    <div id="display-status-sub"
+                        class="text-xs font-medium text-gray-400 uppercase tracking-widest mt-4">
+                        Reactor Power Status
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-x-8 gap-y-6 mt-auto z-10 pt-4 border-t border-white/5">
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Coolant Flow</span>
+                        <div class="font-mono text-lg text-gray-200 font-medium"><span id="display-flow">0.00</span>
+                            <span class="text-xs text-gray-500 font-normal">kg/s</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Electrical
+                            Load</span>
+                        <div class="font-mono text-lg text-gray-200 font-medium"><span id="display-gen">0.00</span>
+                            <span class="text-xs text-gray-500 font-normal">MWe</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Auxiliary
+                            Usage</span>
+                        <div class="font-mono text-lg text-gray-200 font-medium"><span id="display-usage">0.00</span>
+                            <span class="text-xs text-gray-500 font-normal">MW</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Expected Pump
+                            Speed</span>
+                        <div class="font-mono text-lg text-gray-200 font-medium"><span id="display-recirc">28.00</span>
+                            <span class="text-xs text-gray-500 font-normal">%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Tooltip -->
             <div id="ocr-tooltip"
-                class="relative rounded-xl border border-[#00f0ff]/15 bg-[#00f0ff]/5 p-4 flex gap-3 text-xs leading-relaxed text-slate-300 pr-8">
-                <svg class="w-5 h-5 text-[#00f0ff] shrink-0" fill="none" stroke="currentColor" stroke-width="2"
-                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div>
-                    <strong class="block text-white mb-0.5">Need Automatic Screen Scanning?</strong>
-                    OCR screen scanning is a desktop-only feature. Download the desktop app to automatically capture
-                    target demand values from your Roblox game window using a hotkey (Default: F7).
+                class="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex gap-4 text-sm text-gray-400 relative interactive-card group">
+                <div class="mt-0.5 shrink-0">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="pr-6">
+                    <strong class="block text-gray-200 font-medium mb-1">Desktop App Available</strong>
+                    Download the desktop app to automatically capture target demand values from your game window using a
+                    hotkey (F7).
                 </div>
                 <button type="button" onclick="document.getElementById('ocr-tooltip').remove()"
-                    class="absolute top-3.5 right-3.5 text-slate-500 hover:text-white transition focus:outline-none"
-                    aria-label="Close tooltip">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg">
+                    class="absolute top-4 right-4 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
+
         </div>
     </div>
 
@@ -157,32 +193,20 @@
 {% endblock %}
 
 {% block footer_links %}
-<a href="/" class="hover:text-white transition">HOMEPAGE</a>
+<a href="/" class="hover:text-gray-300 transition-colors">Homepage</a>
 {% endblock %}
 
 {% block scripts %}
 <script>
     const APRMtoRecircTable = {
-        0: 0,
-        10: 28,
-        20: 28,
-        30: 28,
-        40: 38,
-        50: 50,
-        60: 70,
-        70: 85,
-        80: 94,
-        90: 97,
-        100: 100,
-        110: 100
+        0: 0, 10: 28, 20: 28, 30: 28, 40: 38, 50: 50,
+        60: 70, 70: 85, 80: 94, 90: 97, 100: 100, 110: 100
     };
 
     function getRecircPumpSpeed(aprm) {
         const keys = Object.keys(APRMtoRecircTable).map(Number).sort((a, b) => a - b);
         for (let k of keys) {
-            if (k >= aprm) {
-                return APRMtoRecircTable[k];
-            }
+            if (k >= aprm) return APRMtoRecircTable[k];
         }
         return APRMtoRecircTable[keys[keys.length - 1]];
     }
@@ -192,12 +216,12 @@
             this.unit = unit;
             if (unit === 1) {
                 this.feedwater_usage = 0.014;
-                this.condenser_usage = 0.007; // per kg
+                this.condenser_usage = 0.007;
                 this.condenser_circ_usage = 6.5;
                 this.recirculation_usage = 0.028;
             } else {
                 this.feedwater_usage = 0.013;
-                this.condenser_usage = 3.1850; // per pump
+                this.condenser_usage = 3.1850;
                 this.condenser_circ_usage = 6.5;
                 this.recirculation_usage = 0.01;
                 this.tower_makeup_usage = 0.5;
@@ -209,8 +233,7 @@
             let condenser_usage = this.unit === 2 ? this.condenser_usage : this.condenser_usage * feedwater_flow;
             let speed = override_speed !== null ? override_speed : getRecircPumpSpeed(aprm);
             let recirculation_usage = this.recirculation_usage * speed * 10;
-            let total_usage = feedwater_usage + condenser_usage + this.condenser_circ_usage * 2 + recirculation_usage;
-            return total_usage;
+            return feedwater_usage + condenser_usage + this.condenser_circ_usage * 2 + recirculation_usage;
         }
     }
 
@@ -245,18 +268,12 @@
             for (let i = 0; i < 5; i++) {
                 if (this.selected_unit === 1) {
                     let inner = 169 + 0.02132 * (demand + 135 + current_usage);
-                    if (inner < 0) {
-                        thermal = 0.0;
-                    } else {
-                        thermal = Math.max(0.0, (-13 + Math.sqrt(inner)) / 0.01066);
-                    }
+                    if (inner < 0) thermal = 0.0;
+                    else thermal = Math.max(0.0, (-13 + Math.sqrt(inner)) / 0.01066);
                 } else {
                     let inner = 118.81 + 0.0952 * (82.3 + demand + current_usage);
-                    if (inner < 0) {
-                        thermal = 0.0;
-                    } else {
-                        thermal = Math.max(0.0, (-10.9 + Math.sqrt(inner)) / 0.0476);
-                    }
+                    if (inner < 0) thermal = 0.0;
+                    else thermal = Math.max(0.0, (-10.9 + Math.sqrt(inner)) / 0.0476);
                 }
                 let flow = this.calcFlow(thermal);
                 let u_calc = this.selected_unit === 1 ? this.usage_calc1 : this.usage_calc2;
@@ -275,18 +292,24 @@
 
         const btn1 = document.getElementById('tab-unit-1');
         const btn2 = document.getElementById('tab-unit-2');
-        const labelRtp = document.getElementById('label-rtp');
+        const labelRtpSpan = document.getElementById('label-rtp').querySelector('span');
+        const labelRtpUnit = document.getElementById('label-rtp').querySelector('.font-mono');
         const unitHeader = document.getElementById('web-unit-header');
 
+        const activeClass = "flex-1 py-2 rounded-lg font-medium text-sm transition-all duration-200 bg-white/10 text-white shadow-sm";
+        const inactiveClass = "flex-1 py-2 rounded-lg font-medium text-sm transition-all duration-200 text-gray-400 hover:text-gray-200 hover:bg-white/5";
+
         if (unit === 1) {
-            btn1.className = "flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20";
-            btn2.className = "flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 text-slate-400 hover:text-white";
-            labelRtp.innerText = "REACTOR THERMAL POWER (APRM%)";
+            btn1.className = activeClass;
+            btn2.className = inactiveClass;
+            labelRtpSpan.innerText = "Reactor Thermal Power";
+            labelRtpUnit.innerText = "APRM %";
             unitHeader.innerText = "UNIT 1 ACTIVE";
         } else {
-            btn2.className = "flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20";
-            btn1.className = "flex-1 py-2.5 rounded-md font-semibold text-xs tracking-wider transition duration-200 text-slate-400 hover:text-white";
-            labelRtp.innerText = "REACTOR THERMAL POWER (RTP%)";
+            btn2.className = activeClass;
+            btn1.className = inactiveClass;
+            labelRtpSpan.innerText = "Reactor Thermal Power";
+            labelRtpUnit.innerText = "RTP %";
             unitHeader.innerText = "UNIT 2 ACTIVE";
         }
 
@@ -312,7 +335,6 @@
             container.classList.remove('flex');
             calc.recirc_override = null;
         }
-
         onInputDemand();
     }
 
@@ -322,13 +344,8 @@
         if (isNaN(val)) {
             calc.recirc_override = 0.0;
         } else {
-            if (val < 0) {
-                val = 0;
-                input.value = "0";
-            } else if (val > 100) {
-                val = 100;
-                input.value = "100";
-            }
+            if (val < 0) { val = 0; input.value = "0"; }
+            else if (val > 100) { val = 100; input.value = "100"; }
             calc.recirc_override = val;
         }
         onInputDemand();
@@ -352,9 +369,7 @@
             const rtpInput = document.getElementById('web-rtp');
 
             let demandVal = parseFloat(demandInput.value);
-            if (isNaN(demandVal) || demandVal < 0) {
-                demandVal = 0.0;
-            }
+            if (isNaN(demandVal) || demandVal < 0) demandVal = 0.0;
 
             const thermal = calc.calcThermal(demandVal);
             const flow = calc.calcFlow(thermal);
@@ -385,8 +400,8 @@
 
             const flow = calc.calcFlow(thermalVal);
             const genLoad = calc.calcGenLoad(thermalVal);
-
             const uCalc = calc.selected_unit === 1 ? calc.usage_calc1 : calc.usage_calc2;
+
             calc.usage = uCalc.calculateUsage(flow, thermalVal, calc.recirc_override);
 
             let demand = genLoad - calc.usage;
@@ -401,36 +416,38 @@
 
     function renderWebOutputs(thermal, flow, genLoad) {
         const limit = 108;
-        const unitSuffix = calc.selected_unit === 1 ? "APRM" : "RTP";
 
         const displayRtp = document.getElementById('display-rtp');
         const displaySub = document.getElementById('display-status-sub');
         const statusLabel = document.getElementById('web-status-label');
         const screen = document.getElementById('web-status-screen');
+        const statusDot = document.getElementById('status-dot');
 
-        document.getElementById('display-flow').innerText = `${flow.toFixed(2)} kg/s`;
-        document.getElementById('display-gen').innerText = `${genLoad.toFixed(2)} MWe`;
-        document.getElementById('display-usage').innerText = `${calc.usage.toFixed(2)} MW`;
+        document.getElementById('display-flow').innerText = flow.toFixed(2);
+        document.getElementById('display-gen').innerText = genLoad.toFixed(2);
+        document.getElementById('display-usage').innerText = calc.usage.toFixed(2);
 
         const currentRecirc = calc.recirc_override !== null ? calc.recirc_override : getRecircPumpSpeed(thermal);
-        document.getElementById('display-recirc').innerText = `${currentRecirc.toFixed(2)}%`;
+        document.getElementById('display-recirc').innerText = currentRecirc.toFixed(2);
 
-        displayRtp.innerText = `${thermal.toFixed(2)}% ${unitSuffix}`;
+        displayRtp.innerHTML = `${thermal.toFixed(2)}<span class="text-3xl md:text-4xl text-gray-500 font-medium ml-1">%</span>`;
 
         if (thermal > limit) {
-            screen.className = "flex-grow rounded-xl bg-[#2a0c0e]/90 border border-red-500/30 p-6 flex flex-col justify-between min-h-[220px] transition-all";
-            displayRtp.className = "text-4xl md:text-5xl font-extrabold tracking-wide text-[#ff003c] font-reactor";
-            displaySub.className = "text-[10px] font-mono text-[#ff003c] mt-2 animate-pulse";
-            displaySub.innerText = `⚠️ OVERPOWER SCRAM RISK (>${limit}%)`;
-            statusLabel.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-red-950/40 text-[#ff003c] border border-red-900/30 uppercase mt-1 inline-block animate-pulse";
+            screen.className = "flex-grow rounded-xl bg-red-950/20 border border-red-500/30 p-6 flex flex-col justify-center relative overflow-hidden transition-all duration-500 shadow-inner min-h-[220px]";
+            displayRtp.className = "text-6xl md:text-7xl font-display font-semibold tracking-tight text-red-500 mb-0 transition-colors duration-300 drop-shadow-sm";
+            displaySub.className = "text-xs font-medium text-red-400 uppercase tracking-widest mt-4 animate-pulse";
+            displaySub.innerText = `OVERPOWER SCRAM RISK (>${limit}%)`;
             statusLabel.innerText = "SCRAM RISK";
+            statusLabel.className = "text-xs font-bold text-red-400 tracking-wide uppercase animate-pulse";
+            statusDot.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.8)]";
         } else {
-            screen.className = "flex-grow rounded-xl bg-[#0b0d12] border border-[#00f0ff]/10 p-6 flex flex-col justify-between min-h-[220px] transition-all";
-            displayRtp.className = "text-4xl md:text-5xl font-extrabold tracking-wide neon-text-cyan font-reactor";
-            displaySub.className = "text-[10px] font-mono text-slate-400 mt-2";
-            displaySub.innerText = "⚡ REACTOR POWER STATUS";
-            statusLabel.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-[#39ff14] border border-emerald-900/30 uppercase mt-1 inline-block";
-            statusLabel.innerText = "SYSTEM OK";
+            screen.className = "flex-grow rounded-xl bg-surfaceElevated border border-white/5 p-6 flex flex-col justify-center relative overflow-hidden transition-all duration-500 shadow-inner min-h-[220px]";
+            displayRtp.className = "text-6xl md:text-7xl font-display font-light tracking-tight text-white mb-0 transition-colors duration-300 drop-shadow-sm";
+            displaySub.className = "text-xs font-medium text-gray-400 uppercase tracking-widest mt-4";
+            displaySub.innerText = "Reactor Power Status";
+            statusLabel.innerText = "System Nominal";
+            statusLabel.className = "text-xs font-medium text-gray-400 tracking-wide uppercase";
+            statusDot.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]";
         }
     }
 
