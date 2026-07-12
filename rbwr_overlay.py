@@ -10,7 +10,7 @@ import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.4"
+__version__ = "1.6.5"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -694,7 +694,33 @@ class OverlayApp:
         self.update_calculations(source="demand")
         
         self.check_for_updates()
-        self.check_focus_loop()
+        
+        # Register Windows foreground window event hook to update topmost instantly
+        try:
+            self.WINEVENTPROC = ctypes.WINFUNCTYPE(
+                None,
+                wintypes.HANDLE,
+                wintypes.DWORD,
+                wintypes.HWND,
+                wintypes.LONG,
+                wintypes.LONG,
+                wintypes.DWORD,
+                wintypes.DWORD
+            )
+            self.win_event_proc_cb = self.WINEVENTPROC(self.on_foreground_changed)
+            self.win_event_hook = ctypes.windll.user32.SetWinEventHook(
+                0x0003, # EVENT_SYSTEM_FOREGROUND
+                0x0003, # EVENT_SYSTEM_FOREGROUND
+                None,
+                self.win_event_proc_cb,
+                0,
+                0,
+                0x0000  # WINEVENT_OUTOFCONTEXT
+            )
+        except Exception as e:
+            log.warning(f"Failed to register SetWinEventHook: {e}")
+            self.win_event_hook = None
+
         self.root.after(10, self.setup_app_window_style)
 
     def center_window(self, w, h):
@@ -1157,6 +1183,11 @@ class OverlayApp:
             ctypes.windll.user32.UnregisterHotKey(None, 101)
         except Exception:
             pass
+        if hasattr(self, 'win_event_hook') and self.win_event_hook:
+            try:
+                ctypes.windll.user32.UnhookWinEvent(self.win_event_hook)
+            except Exception:
+                pass
         if hasattr(self, 'tray') and self.tray:
             try:
                 self.tray.stop()
@@ -2006,24 +2037,46 @@ class OverlayApp:
                     is_roblox = "Roblox" in window_title or "Realistic" in window_title
                     is_ours = (active_pid.value == os.getpid())
                     
+                    if not is_roblox:
+                        try:
+                            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                            h_proc = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, active_pid.value)
+                            if h_proc:
+                                buf = ctypes.create_unicode_buffer(260)
+                                size = wintypes.DWORD(260)
+                                if ctypes.windll.kernel32.QueryFullProcessImageNameW(h_proc, 0, buf, ctypes.byref(size)):
+                                    proc_name = os.path.basename(buf.value).lower()
+                                    if "roblox" in proc_name:
+                                        is_roblox = True
+                                ctypes.windll.kernel32.CloseHandle(h_proc)
+                        except Exception:
+                            pass
+
                     if is_roblox or is_ours:
                         if not self.root.attributes("-topmost"):
                             self.root.attributes("-topmost", True)
                     else:
                         if self.root.attributes("-topmost"):
                             self.root.attributes("-topmost", False)
-                else:
-                    if self.root.attributes("-topmost"):
-                        self.root.attributes("-topmost", False)
+                            our_hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+                            ctypes.windll.user32.SetWindowPos(our_hwnd, hwnd, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
             else:
                 if self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", False)
+                    hwnd = ctypes.windll.user32.GetForegroundWindow()
+                    our_hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+                    if hwnd and hwnd != our_hwnd:
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, hwnd, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                    else:
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, 1, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
         except Exception:
             pass
 
-    def check_focus_loop(self):
-        self.update_topmost_state()
-        self.root.after(300, self.check_focus_loop)
+    def on_foreground_changed(self, hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
+        try:
+            self.update_topmost_state()
+        except Exception:
+            pass
 
     def check_for_updates(self):
         if not _is_compiled:
