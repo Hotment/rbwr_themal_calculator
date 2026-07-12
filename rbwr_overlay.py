@@ -2185,12 +2185,32 @@ class OverlayApp:
                            bg=BG_CARD, fg=TEXT_LIGHT, font=("Segoe UI", 10, "bold"), justify="left")
         msg_lbl.pack(anchor="w", pady=(0, 10))
         
-        notes_lbl = tk.Label(content_frame, text=f"Release Notes:\n{release_notes}", 
-                             bg=BG_CARD, fg=TEXT_MUTED, font=("Consolas", 8), justify="left", wraplength=340)
-        notes_lbl.pack(anchor="w", pady=(0, 15))
-        
         btn_frame = tk.Frame(content_frame, bg=BG_CARD)
         btn_frame.pack(fill="x", side="bottom")
+
+        notes_frame = tk.Frame(content_frame, bg=BG_MAIN, bd=1, relief="solid")
+        notes_frame.pack(fill="both", expand=True, pady=(0, 15))
+        notes_frame.columnconfigure(0, weight=1)
+        notes_frame.rowconfigure(0, weight=1)
+
+        notes_text = tk.Text(notes_frame, bg=BG_MAIN, fg=TEXT_MUTED, 
+                             insertbackground=TEXT_LIGHT, font=("Consolas", 8), 
+                             bd=0, wrap="word", highlightthickness=0)
+        notes_text.insert("1.0", f"Release Notes:\n{release_notes}")
+        notes_text.config(state="disabled")
+        notes_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+
+        scroll_y = ttk.Scrollbar(notes_frame, orient="vertical", command=notes_text.yview)
+        
+        def scroll_set(first, last):
+            first, last = float(first), float(last)
+            if first <= 0.0 and last >= 1.0:
+                scroll_y.grid_forget()
+            else:
+                scroll_y.grid(row=0, column=1, sticky="ns")
+            scroll_y.set(first, last)
+            
+        notes_text.config(yscrollcommand=scroll_set)
         
         def start_update():
             popup.destroy()
