@@ -42,10 +42,6 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        .cyber-grid {
-            /* Clean look, no hazard grid lines */
-        }
-
         .cyber-panel {
             background: #121217;
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -124,8 +120,7 @@
 
 <body class="min-h-screen flex flex-col md:flex-row font-sans" data-is-root="{{ is_root|lower }}">
 
-    <aside
-        class="w-full md:w-64 bg-surface border-b md:border-b-0 md:border-r border-white/5 flex flex-col shrink-0">
+    <aside class="w-full md:w-64 bg-surface border-b md:border-b-0 md:border-r border-white/5 flex flex-col shrink-0">
         <div class="p-6 border-b border-white/5 flex items-center gap-3">
             <div class="relative w-8 h-8 flex items-center justify-center">
                 <div
@@ -287,7 +282,8 @@
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 <div class="lg:col-span-1 flex flex-col gap-4">
                     <div class="cyber-panel p-5 rounded-xl border border-white/5">
-                        <h3 class="text-xs font-bold tracking-wider text-amber-400 font-display mb-4 uppercase">Banned IPs
+                        <h3 class="text-xs font-bold tracking-wider text-amber-400 font-display mb-4 uppercase">Banned
+                            IPs
                         </h3>
                         <div id="banned-ips-container" class="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
                             <p class="text-xs text-slate-500 italic font-mono">Loading bans...</p>
@@ -398,8 +394,7 @@
             </div>
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Ban Expiration / Duration</label>
-                <select id="ban-duration"
-                    class="premium-input p-3 rounded-lg outline-none cursor-pointer">
+                <select id="ban-duration" class="premium-input p-3 rounded-lg outline-none cursor-pointer">
                     <option value="60">1 Hour</option>
                     <option value="1440">24 Hours</option>
                     <option value="10080">7 Days</option>
