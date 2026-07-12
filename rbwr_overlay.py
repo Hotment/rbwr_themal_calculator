@@ -10,7 +10,7 @@ import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.5"
+__version__ = "1.6.6"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -695,32 +695,7 @@ class OverlayApp:
         
         self.check_for_updates()
         
-        # Register Windows foreground window event hook to update topmost instantly
-        try:
-            self.WINEVENTPROC = ctypes.WINFUNCTYPE(
-                None,
-                wintypes.HANDLE,
-                wintypes.DWORD,
-                wintypes.HWND,
-                wintypes.LONG,
-                wintypes.LONG,
-                wintypes.DWORD,
-                wintypes.DWORD
-            )
-            self.win_event_proc_cb = self.WINEVENTPROC(self.on_foreground_changed)
-            self.win_event_hook = ctypes.windll.user32.SetWinEventHook(
-                0x0003, # EVENT_SYSTEM_FOREGROUND
-                0x0003, # EVENT_SYSTEM_FOREGROUND
-                None,
-                self.win_event_proc_cb,
-                0,
-                0,
-                0x0000  # WINEVENT_OUTOFCONTEXT
-            )
-        except Exception as e:
-            log.warning(f"Failed to register SetWinEventHook: {e}")
-            self.win_event_hook = None
-
+        self.check_focus_loop()
         self.root.after(10, self.setup_app_window_style)
 
     def center_window(self, w, h):
@@ -747,7 +722,9 @@ class OverlayApp:
             WS_EX_APPWINDOW = 0x00040000
             WS_EX_TOOLWINDOW = 0x00000080
             
-            hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+            hwnd_to_use = self.root.winfo_id()
+            parent = ctypes.windll.user32.GetParent(hwnd_to_use)
+            hwnd = parent if parent else hwnd_to_use
             style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
             style = style & ~WS_EX_TOOLWINDOW
             style = style | WS_EX_APPWINDOW
@@ -1183,18 +1160,13 @@ class OverlayApp:
             ctypes.windll.user32.UnregisterHotKey(None, 101)
         except Exception:
             pass
-        if hasattr(self, 'win_event_hook') and self.win_event_hook:
-            try:
-                ctypes.windll.user32.UnhookWinEvent(self.win_event_hook)
-            except Exception:
-                pass
         if hasattr(self, 'tray') and self.tray:
             try:
                 self.tray.stop()
             except Exception:
                 pass
         self.root.destroy()
-        sys.exit(0)
+        os._exit(0)
 
     def get_ocr_model_paths(self):
         import os
@@ -1258,25 +1230,23 @@ class OverlayApp:
             paths = self.get_ocr_model_paths()
             log.info(f"Initializing RapidOCR with paths: {paths}")
             
-            # Monkey-patch init_module to use fully-qualified package imports.
-            # RapidOCR uses importlib.import_module('ch_ppocr_v3_det') with a 
-            # sys.path hack, which breaks inside Nuitka's compiled bundle.
-            _original_init_module = RapidOCR.init_module  # pyright: ignore[reportOptionalMemberAccess]
-            
-            @staticmethod
-            def _patched_init_module(module_name, class_name):
-                import importlib
-                # Try the fully-qualified package path first
-                qualified = f"rapidocr_onnxruntime.{module_name}"
-                try:
-                    log.info(f"Importing OCR module: {qualified}.{class_name}")
-                    mod = importlib.import_module(qualified)
-                    return getattr(mod, class_name)
-                except (ImportError, AttributeError):
-                    log.info(f"Qualified import failed, falling back to: {module_name}")
-                    return _original_init_module(module_name, class_name)
-            
-            RapidOCR.init_module = _patched_init_module
+            # Monkey-patch init_module if it exists (older rapidocr versions) to use fully-qualified imports
+            if hasattr(RapidOCR, 'init_module'):
+                _original_init_module = RapidOCR.init_module  # pyright: ignore[reportOptionalMemberAccess]
+                
+                @staticmethod
+                def _patched_init_module(module_name, class_name):
+                    import importlib
+                    qualified = f"rapidocr_onnxruntime.{module_name}"
+                    try:
+                        log.info(f"Importing OCR module: {qualified}.{class_name}")
+                        mod = importlib.import_module(qualified)
+                        return getattr(mod, class_name)
+                    except (ImportError, AttributeError):
+                        log.info(f"Qualified import failed, falling back to: {module_name}")
+                        return _original_init_module(module_name, class_name)
+                
+                RapidOCR.init_module = _patched_init_module
             
             self.ocr_engine = RapidOCR(**paths)  # pyright: ignore[reportOptionalCall]
             log.info("RapidOCR engine initialized successfully!")
@@ -2024,6 +1994,10 @@ class OverlayApp:
                     self.root.attributes("-topmost", True)
             elif self.topmost_on_roblox:
                 hwnd = ctypes.windll.user32.GetForegroundWindow()
+                hwnd_to_use = self.root.winfo_id()
+                parent = ctypes.windll.user32.GetParent(hwnd_to_use)
+                our_hwnd = parent if parent else hwnd_to_use
+
                 if hwnd:
                     buffer_len = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
                     buffer = ctypes.create_unicode_buffer(buffer_len)
@@ -2058,25 +2032,35 @@ class OverlayApp:
                     else:
                         if self.root.attributes("-topmost"):
                             self.root.attributes("-topmost", False)
-                            our_hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
-                            ctypes.windll.user32.SetWindowPos(our_hwnd, hwnd, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                            self.root.lower()
+                            ctypes.windll.user32.SetWindowPos(our_hwnd, -2, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                            ctypes.windll.user32.SetWindowPos(our_hwnd, 1, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                else:
+                    if self.root.attributes("-topmost"):
+                        self.root.attributes("-topmost", False)
+                        self.root.lower()
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, -2, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, 1, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
             else:
                 if self.root.attributes("-topmost"):
                     self.root.attributes("-topmost", False)
+                    self.root.lower()
                     hwnd = ctypes.windll.user32.GetForegroundWindow()
-                    our_hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+                    hwnd_to_use = self.root.winfo_id()
+                    parent = ctypes.windll.user32.GetParent(hwnd_to_use)
+                    our_hwnd = parent if parent else hwnd_to_use
                     if hwnd and hwnd != our_hwnd:
-                        ctypes.windll.user32.SetWindowPos(our_hwnd, hwnd, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, -2, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, 1, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
                     else:
+                        ctypes.windll.user32.SetWindowPos(our_hwnd, -2, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
                         ctypes.windll.user32.SetWindowPos(our_hwnd, 1, 0, 0, 0, 0, 0x0010 | 0x0002 | 0x0001)
         except Exception:
             pass
 
-    def on_foreground_changed(self, hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
-        try:
-            self.update_topmost_state()
-        except Exception:
-            pass
+    def check_focus_loop(self):
+        self.update_topmost_state()
+        self.root.after(200, self.check_focus_loop)
 
     def check_for_updates(self):
         if not _is_compiled:
