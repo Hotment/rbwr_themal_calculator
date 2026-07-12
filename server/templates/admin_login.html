@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -8,17 +8,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Consolas&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        mono: ['Consolas', 'monospace'],
-                        reactor: ['Orbitron', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#0a0a0c',
+                        surface: '#121217',
+                        surfaceElevated: '#1a1a21',
+                        border: 'rgba(255, 255, 255, 0.08)',
+                        borderHover: 'rgba(255, 255, 255, 0.15)',
+                        primary: '#3b82f6',
                     }
                 }
             }
@@ -26,97 +35,53 @@
     </script>
     <style>
         body {
-            background-color: #07080a;
-            color: #ffffff;
-            background-image:
-                radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.05) 0%, transparent 60%);
+            background-color: #0a0a0c;
+            color: #f3f4f6;
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        .cyber-grid {
-            background-image:
-                linear-gradient(rgba(18, 22, 28, 0.4) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(18, 22, 28, 0.4) 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-
-        .cyber-panel {
-            background: rgba(17, 20, 26, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 240, 255, 0.08);
-            position: relative;
-        }
-
-        .cyber-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00f0ff, transparent);
-        }
-
-        .glow-cyan {
-            border-color: rgba(0, 240, 255, 0.3);
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
-        }
-
-        .accent-cyan {
-            color: #00f0ff;
-            text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        .premium-glass {
+            background: #121217;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(16px);
         }
 
         .input-container {
-            background-color: rgba(11, 13, 18, 0.8);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #ffffff;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .input-container:focus-within {
-            border-color: #00f0ff;
-            box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
-        }
-
-        @keyframes hazard-pulse {
-            0% {
-                opacity: 0.6;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                opacity: 0.6;
-            }
-        }
-
-        .hazard-glow {
-            animation: hazard-pulse 2s infinite;
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
     </style>
 </head>
 
-<body class="cyber-grid min-h-screen flex items-center justify-center p-6 select-none font-sans">
+<body class="min-h-screen flex items-center justify-center p-6 select-none font-sans">
 
     <div class="max-w-md w-full flex flex-col gap-8 relative">
 
         <div
-            class="absolute -inset-10 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 blur-3xl rounded-full opacity-30 -z-10">
+            class="absolute -inset-10 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 blur-3xl rounded-full opacity-30 -z-10">
         </div>
 
         <div class="text-center flex flex-col items-center gap-2">
             <div class="relative w-24 h-24 mb-2 flex items-center justify-center">
                 <div
-                    class="absolute inset-0 rounded-full border-2 border-dashed border-[#00f0ff] animate-[spin_25s_linear_infinite] opacity-60">
+                    class="absolute inset-0 rounded-full border-2 border-dashed border-blue-500 animate-[spin_25s_linear_infinite] opacity-60">
                 </div>
-                <div class="absolute inset-3 rounded-full border border-[#00f0ff]/30 animate-ping opacity-45"></div>
+                <div class="absolute inset-3 rounded-full border border-blue-500/30 animate-ping opacity-45"></div>
                 <div
-                    class="w-14 h-14 rounded-full bg-cyan-950/40 border border-[#00f0ff]/50 flex items-center justify-center backdrop-blur-md shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-                    <svg class="w-7 h-7 text-[#00f0ff] drop-shadow-[0_0_8px_rgba(0,240,255,0.6)] animate-pulse"
+                    class="w-14 h-14 rounded-full bg-blue-950/40 border border-blue-500/50 flex items-center justify-center backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                    <svg class="w-7 h-7 text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse"
                         fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"
                         xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -127,29 +92,29 @@
             </div>
 
             <h1
-                class="font-reactor text-3xl tracking-widest text-[#00f0ff] uppercase select-none drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+                class="font-display font-semibold text-3xl tracking-wide text-white uppercase select-none">
                 Admin Login</h1>
             <span class="text-[10px] text-slate-500 font-mono tracking-[0.25em] block">// APRM Calculator Admin //</span>
         </div>
 
-        <div class="cyber-panel glow-cyan p-8 rounded-2xl flex flex-col gap-6">
-            <div class="border-b border-slate-800/80 pb-4">
-                <h2 class="text-sm font-bold tracking-widest accent-cyan font-reactor uppercase">Login</h2>
+        <div class="premium-glass p-8 rounded-2xl flex flex-col gap-6">
+            <div class="border-b border-white/5 pb-4">
+                <h2 class="text-sm font-semibold tracking-wide text-white font-display uppercase">Login</h2>
                 <p class="text-xs text-slate-400 font-mono mt-1.5 leading-relaxed">Enter your administrator credentials to log in.</p>
             </div>
 
             {% if error %}
             <div
-                class="relative overflow-hidden rounded-lg bg-rose-950/30 border border-red-500/40 p-4 shadow-[0_0_15px_rgba(239,68,68,0.1)] flex gap-3.5 items-start">
-                <div class="absolute top-0 left-0 bottom-0 w-1 bg-[#ff003c]"></div>
-                <svg class="w-5 h-5 text-[#ff003c] shrink-0 mt-0.5 hazard-glow" fill="none" stroke="currentColor"
+                class="relative overflow-hidden rounded-lg bg-rose-950/20 border border-rose-500/20 p-4 shadow-[0_0_15px_rgba(244,63,94,0.05)] flex gap-3.5 items-start">
+                <div class="absolute top-0 left-0 bottom-0 w-1 bg-rose-500"></div>
+                <svg class="w-5 h-5 text-rose-500 shrink-0 mt-0.5" fill="none" stroke="currentColor"
                     stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                     </path>
                 </svg>
                 <div class="flex flex-col gap-0.5">
-                    <span class="text-[10px] font-mono font-bold text-[#ff003c] tracking-widest">ERROR</span>
+                    <span class="text-[10px] font-mono font-bold text-rose-500 tracking-widest">ERROR</span>
                     <p class="text-xs text-slate-300 font-mono font-medium leading-relaxed">{{ error }}</p>
                 </div>
             </div>
@@ -186,7 +151,7 @@
                             placeholder="Enter password"
                             class="bg-transparent w-full py-3.5 text-sm text-white placeholder-slate-600 outline-none">
                         <button type="button" onclick="togglePasswordVisibility()"
-                            class="text-slate-500 hover:text-[#00f0ff] focus:outline-none transition p-1 ml-2">
+                            class="text-slate-500 hover:text-blue-500 focus:outline-none transition p-1 ml-2">
                             <svg id="eye-open" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"
                                 viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -206,11 +171,11 @@
                 </div>
 
                 <button type="submit" id="submit-btn"
-                    class="relative group overflow-hidden px-6 py-4 bg-[#00f0ff] hover:bg-[#00f0ff]/90 text-[#07080a] font-bold rounded-xl transition duration-300 text-sm tracking-widest uppercase font-mono mt-3 shadow-[0_4px_20px_rgba(0,240,255,0.25)] flex items-center justify-center gap-2">
+                    class="relative group overflow-hidden px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition duration-300 text-sm tracking-wider uppercase font-mono mt-3 shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2">
                     <span
-                        class="absolute inset-0 w-full h-full bg-white/20 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></span>
+                        class="absolute inset-0 w-full h-full bg-white/10 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></span>
 
-                    <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-4 w-4 text-[#07080a] hidden"
+                    <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white hidden"
                         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
                         </circle>

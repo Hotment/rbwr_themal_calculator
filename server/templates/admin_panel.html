@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -8,17 +8,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Consolas&family=Inter:wght@300;400;600;800&family=Orbitron:wght@700;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        mono: ['Consolas', 'monospace'],
-                        reactor: ['Orbitron', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#0a0a0c',
+                        surface: '#121217',
+                        surfaceElevated: '#1a1a21',
+                        border: 'rgba(255, 255, 255, 0.08)',
+                        borderHover: 'rgba(255, 255, 255, 0.15)',
+                        primary: '#3b82f6',
                     }
                 }
             }
@@ -26,49 +35,71 @@
     </script>
     <style>
         body {
-            background-color: #07080a;
-            color: #ffffff;
+            background-color: #0a0a0c;
+            color: #f3f4f6;
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .cyber-grid {
-            background-image:
-                linear-gradient(rgba(18, 22, 28, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(18, 22, 28, 0.3) 1px, transparent 1px);
-            background-size: 25px 25px;
+            /* Clean look, no hazard grid lines */
         }
 
         .cyber-panel {
-            background-color: rgba(17, 20, 26, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            background: #121217;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(16px);
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
+        .premium-glass {
+            background: #121217;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(16px);
+        }
+
+        .premium-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .premium-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
         .hover-glow:hover {
-            border-color: rgba(0, 240, 255, 0.25);
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+            border-color: rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.15);
         }
 
         .glow-cyan {
-            border-color: rgba(0, 240, 255, 0.2);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .accent-cyan {
-            color: #00f0ff;
-            text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+            color: #3b82f6;
         }
 
         .accent-gold {
-            color: #ffaa00;
+            color: #f59e0b;
         }
 
         .accent-red {
-            color: #ff003c;
-            text-shadow: 0 0 8px rgba(255, 0, 60, 0.3);
+            color: #ef4444;
+        }
+
+        select option {
+            background: #121217;
+            color: #ffffff;
         }
 
         ::-webkit-scrollbar {
@@ -81,40 +112,40 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(0, 240, 255, 0.2);
+            background: rgba(59, 130, 246, 0.2);
             border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 240, 255, 0.4);
+            background: rgba(59, 130, 246, 0.4);
         }
     </style>
 </head>
 
-<body class="cyber-grid min-h-screen flex flex-col md:flex-row font-sans" data-is-root="{{ is_root|lower }}">
+<body class="min-h-screen flex flex-col md:flex-row font-sans" data-is-root="{{ is_root|lower }}">
 
     <aside
-        class="w-full md:w-64 bg-[#0c0f14] border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col shrink-0">
-        <div class="p-6 border-b border-slate-800/80 flex items-center gap-3">
+        class="w-full md:w-64 bg-surface border-b md:border-b-0 md:border-r border-white/5 flex flex-col shrink-0">
+        <div class="p-6 border-b border-white/5 flex items-center gap-3">
             <div class="relative w-8 h-8 flex items-center justify-center">
                 <div
-                    class="absolute inset-0 rounded-full border border-dashed border-[#00f0ff] animate-[spin_15s_linear_infinite] opacity-50">
+                    class="absolute inset-0 rounded-full border border-dashed border-blue-500 animate-[spin_15s_linear_infinite] opacity-50">
                 </div>
                 <div
-                    class="w-5 h-5 rounded-full bg-cyan-950/40 border border-[#00f0ff]/50 flex items-center justify-center">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-ping"></div>
+                    class="w-5 h-5 rounded-full bg-blue-950/40 border border-blue-500/50 flex items-center justify-center">
+                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></div>
                 </div>
             </div>
             <div>
-                <h1 class="font-reactor text-sm tracking-wider text-slate-200">Admin Panel</h1>
+                <h1 class="font-display font-semibold text-sm tracking-wider text-slate-200">Admin Panel</h1>
                 <p class="text-[8px] text-slate-500 font-mono tracking-widest">APRM Calculator</p>
             </div>
         </div>
 
         <nav class="p-4 flex flex-col gap-1.5 grow">
             <a href="/admin" id="nav-overview"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'overview' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
-                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'overview' %}bg-blue-600/10 text-blue-500 border border-blue-500/20{% else %}text-slate-400 hover:text-white hover:bg-white/5 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-blue-500 transition" fill="none"
                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z">
@@ -124,8 +155,8 @@
             </a>
 
             <a href="/admin/suggestions" id="nav-suggestions"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'suggestions' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
-                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'suggestions' %}bg-blue-600/10 text-blue-500 border border-blue-500/20{% else %}text-slate-400 hover:text-white hover:bg-white/5 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-blue-500 transition" fill="none"
                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.12 2.95 2.68 3.22 1.24.22 2.5.34 3.79.34 1.29 0 2.55-.12 3.79-.34 1.56-.27 2.68-1.63 2.68-3.22V8.25A3.75 3.75 0 0012.75 4.5h-1.5a3.75 3.75 0 00-3.75 3.75v5.27h-.001z">
@@ -135,8 +166,8 @@
             </a>
 
             <a href="/admin/crashes" id="nav-crashes"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'crashes' %}bg-red-950/20 text-[#ff003c] border border-red-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
-                <svg class="w-4 h-4 text-slate-500 group-hover:text-red-500 transition" fill="none"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'crashes' %}bg-rose-600/10 text-rose-500 border border-rose-500/20{% else %}text-slate-400 hover:text-white hover:bg-white/5 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-rose-500 transition" fill="none"
                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
@@ -147,8 +178,8 @@
 
             {% if is_root %}
             <a href="/admin/accounts" id="nav-accounts"
-                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'accounts' %}bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20{% else %}text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent{% endif %}">
-                <svg class="w-4 h-4 text-slate-500 group-hover:text-[#00f0ff] transition" fill="none"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider transition group {% if active_view == 'accounts' %}bg-blue-600/10 text-blue-500 border border-blue-500/20{% else %}text-slate-400 hover:text-white hover:bg-white/5 border border-transparent{% endif %}">
+                <svg class="w-4 h-4 text-slate-500 group-hover:text-blue-500 transition" fill="none"
                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z">
@@ -159,11 +190,11 @@
             {% endif %}
         </nav>
 
-        <div class="p-4 border-t border-slate-800/80 bg-[#090b0e] flex flex-col gap-2">
+        <div class="p-4 border-t border-white/5 bg-background flex flex-col gap-2">
             <div class="flex items-center justify-between text-[10px] font-mono text-slate-500">
                 <span>Role:</span>
                 <span
-                    class="flex items-center gap-1.5 {% if is_root %}text-cyan-400{% else %}text-emerald-500{% endif %} font-bold">
+                    class="flex items-center gap-1.5 {% if is_root %}text-blue-400{% else %}text-emerald-500{% endif %} font-bold">
                     {% if is_root %}Owner{% else %}Admin{% endif %}
                 </span>
             </div>
@@ -182,12 +213,12 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-widest accent-cyan font-reactor">Overview</h1>
+                    <h1 class="text-2xl font-bold tracking-wide text-white font-display">Overview</h1>
                     <p class="text-xs text-slate-500 font-mono mt-1">Logged in as {{ username }}</p>
                 </div>
                 <div class="flex gap-4 font-mono text-xs">
                     <a href="/"
-                        class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/20 tracking-wider uppercase transition">Home
+                        class="px-4 py-2 border border-white/10 hover:border-white/20 text-gray-300 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 tracking-wide font-medium text-xs transition">Home
                         Site</a>
                 </div>
             </header>
@@ -196,7 +227,7 @@
                 <a href="/admin/suggestions" id="card-link-suggestions"
                     class="cyber-panel hover-glow p-8 rounded-xl flex flex-col gap-4 text-left group">
                     <div
-                        class="w-12 h-12 rounded-lg bg-cyan-950/30 border border-cyan-800/80 flex items-center justify-center text-[#00f0ff] group-hover:bg-[#00f0ff]/10 transition duration-300">
+                        class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 transition duration-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
                             xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -206,10 +237,10 @@
                     </div>
                     <div>
                         <h2
-                            class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#00f0ff] transition duration-300">
+                            class="text-xl font-bold tracking-wide font-display text-white group-hover:text-blue-400 transition duration-300">
                             Suggestions Feed</h2>
                     </div>
-                    <p class="text-sm text-slate-400 leading-relaxed mt-2">
+                    <p class="text-sm text-gray-400 leading-relaxed mt-2">
                         Review incoming user suggestions, accept or decline proposals, and ban or unban user IPs.
                     </p>
                 </a>
@@ -217,7 +248,7 @@
                 <a href="/admin/crashes" id="card-link-crashes"
                     class="cyber-panel hover-glow p-8 rounded-xl flex flex-col gap-4 text-left group">
                     <div
-                        class="w-12 h-12 rounded-lg bg-red-950/30 border border-red-900/80 flex items-center justify-center text-[#ff003c] group-hover:bg-[#ff003c]/10 transition duration-300">
+                        class="w-12 h-12 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:bg-rose-500/20 transition duration-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
                             xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -227,10 +258,10 @@
                     </div>
                     <div>
                         <h2
-                            class="text-xl font-bold tracking-wider font-reactor group-hover:text-[#ff003c] transition duration-300">
+                            class="text-xl font-bold tracking-wide font-display text-white group-hover:text-rose-400 transition duration-300">
                             Crash Records</h2>
                     </div>
-                    <p class="text-sm text-slate-400 leading-relaxed mt-2">
+                    <p class="text-sm text-gray-400 leading-relaxed mt-2">
                         View diagnostic variables, application tracebacks, logs, and system details for crashes.
                     </p>
                 </a>
@@ -242,21 +273,21 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">Suggestions</h2>
+                    <h2 class="text-xl font-bold tracking-wide text-white font-display">Suggestions</h2>
                     <p class="text-xs text-slate-500 font-mono mt-1">Review feedback and manage user requests.</p>
                 </div>
                 <div
-                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
-                    <div>ACTIVE BANS: <span id="sug-stat-active-bans" class="accent-red">0</span></div>
-                    <div class="w-px bg-slate-800 self-stretch"></div>
-                    <div>TOTAL ENTRIES: <span id="sug-stat-total-entries" class="accent-cyan">0</span></div>
+                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-white/5 shrink-0 font-mono">
+                    <div>ACTIVE BANS: <span id="sug-stat-active-bans" class="text-rose-400">0</span></div>
+                    <div class="w-px bg-white/5 self-stretch"></div>
+                    <div>TOTAL ENTRIES: <span id="sug-stat-total-entries" class="text-blue-400">0</span></div>
                 </div>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 <div class="lg:col-span-1 flex flex-col gap-4">
-                    <div class="cyber-panel p-5 rounded-xl border border-slate-800/80">
-                        <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Banned IPs
+                    <div class="cyber-panel p-5 rounded-xl border border-white/5">
+                        <h3 class="text-xs font-bold tracking-wider text-amber-400 font-display mb-4 uppercase">Banned IPs
                         </h3>
                         <div id="banned-ips-container" class="flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
                             <p class="text-xs text-slate-500 italic font-mono">Loading bans...</p>
@@ -266,17 +297,17 @@
 
                 <div class="lg:col-span-3 flex flex-col gap-4">
                     <div
-                        class="cyber-panel p-2 rounded-xl flex border border-slate-800/80 gap-1 text-xs font-bold font-mono">
+                        class="cyber-panel p-1.5 rounded-xl flex border border-white/5 gap-1 text-xs font-bold font-mono bg-black/20 w-fit">
                         <button onclick="filterStatus('all')" id="tab-all"
-                            class="px-4 py-2 bg-[#00f0ff] text-[#07080a] hover:opacity-95 transition rounded-lg uppercase">All</button>
+                            class="px-4 py-2 bg-blue-600 text-white transition rounded-lg uppercase">All</button>
                         <button onclick="filterStatus('pending')" id="tab-pending"
-                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Pending</button>
+                            class="px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition rounded-lg uppercase">Pending</button>
                         <button onclick="filterStatus('considering')" id="tab-considering"
-                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Considering</button>
+                            class="px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition rounded-lg uppercase">Considering</button>
                         <button onclick="filterStatus('accepted')" id="tab-accepted"
-                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Accepted</button>
+                            class="px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition rounded-lg uppercase">Accepted</button>
                         <button onclick="filterStatus('declined')" id="tab-declined"
-                            class="px-4 py-2 text-slate-400 hover:text-white transition rounded-lg uppercase">Declined</button>
+                            class="px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition rounded-lg uppercase">Declined</button>
                     </div>
 
                     <div id="feed-container" class="flex flex-col gap-4">
@@ -291,14 +322,14 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-red font-reactor">Crash Reports</h2>
+                    <h2 class="text-xl font-bold tracking-wide text-rose-500 font-display">Crash Reports</h2>
                     <p class="text-xs text-slate-500 font-mono mt-1">View error tracebacks and diagnostic logs.</p>
                 </div>
                 <div
-                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-slate-800/60 shrink-0 font-mono">
-                    <div>ACTIVE BANS: <span id="crash-stat-active-bans" class="accent-red">0</span></div>
-                    <div class="w-px bg-slate-800 self-stretch"></div>
-                    <div>TOTAL REPORTS: <span id="crash-stat-total-entries" class="accent-cyan">0</span></div>
+                    class="flex gap-4 text-xs font-bold text-slate-400 bg-black/40 px-4 py-2.5 rounded-lg border border-white/5 shrink-0 font-mono">
+                    <div>ACTIVE BANS: <span id="crash-stat-active-bans" class="text-rose-400">0</span></div>
+                    <div class="w-px bg-white/5 self-stretch"></div>
+                    <div>TOTAL REPORTS: <span id="crash-stat-total-entries" class="text-blue-400">0</span></div>
                 </div>
             </header>
 
@@ -313,38 +344,38 @@
             <header
                 class="cyber-panel glow-cyan p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold tracking-widest accent-cyan font-reactor">Admin Accounts</h2>
+                    <h2 class="text-xl font-bold tracking-wide text-white font-display">Admin Accounts</h2>
                     <p class="text-xs text-slate-500 font-mono mt-1">Manage administrator accounts and permissions.</p>
                 </div>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <!-- Create Admin Account Card -->
-                <div class="cyber-panel p-6 rounded-xl border border-slate-800/80 flex flex-col gap-4">
-                    <h3 class="text-xs font-bold tracking-wider accent-cyan font-reactor mb-2 uppercase">Create New
+                <div class="cyber-panel p-6 rounded-xl border border-white/5 flex flex-col gap-4">
+                    <h3 class="text-xs font-bold tracking-wider text-blue-400 font-display mb-2 uppercase">Create New
                         Admin</h3>
                     <form id="create-admin-form" onsubmit="handleCreateAdmin(event)"
                         class="flex flex-col gap-4 text-xs font-mono">
                         <div class="flex flex-col gap-1">
                             <label class="text-slate-500 uppercase">Username</label>
                             <input type="text" id="new-admin-username" required placeholder="Enter username"
-                                class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                                class="premium-input p-3 rounded-lg outline-none">
                         </div>
                         <div class="flex flex-col gap-1">
                             <label class="text-slate-500 uppercase">Password (min 8 chars)</label>
                             <input type="password" id="new-admin-password" required placeholder="Enter password"
-                                class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                                class="premium-input p-3 rounded-lg outline-none">
                         </div>
                         <button type="submit" id="create-admin-btn"
-                            class="px-4 py-3 bg-[#00f0ff] hover:bg-[#00f0ff]/90 text-[#07080a] font-bold rounded-lg uppercase tracking-wider transition mt-2 font-bold">
+                            class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg uppercase tracking-wider transition mt-2 shadow-lg shadow-blue-500/10">
                             Create Account
                         </button>
                     </form>
                 </div>
 
                 <!-- Admin Accounts List -->
-                <div class="lg:col-span-2 cyber-panel p-6 rounded-xl border border-slate-800/80">
-                    <h3 class="text-xs font-bold tracking-wider accent-gold font-reactor mb-4 uppercase">Active
+                <div class="lg:col-span-2 cyber-panel p-6 rounded-xl border border-white/5">
+                    <h3 class="text-xs font-bold tracking-wider text-amber-400 font-display mb-4 uppercase">Active
                         Administrators</h3>
                     <div id="accounts-list-container" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
                         <p class="text-xs text-slate-500 italic font-mono">Loading accounts...</p>
@@ -359,16 +390,16 @@
     <div id="ban-modal"
         class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="cyber-panel glow-cyan p-6 rounded-2xl max-w-sm w-full flex flex-col gap-4">
-            <h3 class="text-sm font-bold tracking-widest accent-red font-reactor">Ban IP Address</h3>
+            <h3 class="text-sm font-bold tracking-wide text-rose-500 font-display">Ban IP Address</h3>
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Target IP Address</label>
                 <input type="text" id="ban-ip-field" readonly
-                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                    class="premium-input p-3 rounded-lg outline-none opacity-60">
             </div>
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Ban Expiration / Duration</label>
                 <select id="ban-duration"
-                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none cursor-pointer">
+                    class="premium-input p-3 rounded-lg outline-none cursor-pointer">
                     <option value="60">1 Hour</option>
                     <option value="1440">24 Hours</option>
                     <option value="10080">7 Days</option>
@@ -378,13 +409,13 @@
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Reason for Prohibition</label>
                 <input type="text" id="ban-reason" placeholder="e.g. Spammed submission logs"
-                    class="bg-[#0b0d12] border border-slate-800 p-3 rounded-lg text-slate-300 outline-none">
+                    class="premium-input p-3 rounded-lg outline-none">
             </div>
             <div class="flex gap-3 justify-end text-xs font-bold font-mono mt-2">
                 <button onclick="closeBanModal()"
-                    class="px-4 py-2 border border-slate-800 text-slate-400 hover:text-white rounded-lg uppercase transition">Cancel</button>
+                    class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg uppercase transition">Cancel</button>
                 <button onclick="submitBan()"
-                    class="px-4 py-2 bg-red-950 text-red-500 hover:bg-red-900 hover:text-white rounded-lg uppercase transition">Enforce
+                    class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg uppercase transition shadow-lg shadow-rose-500/10">Enforce
                     Ban</button>
             </div>
         </div>
@@ -473,9 +504,9 @@
             const activeLink = document.getElementById('nav-' + viewName);
             if (activeLink) {
                 if (viewName === 'crashes') {
-                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-red-950/20 text-[#ff003c] border border-red-500/20 transition group";
+                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-rose-600/10 text-rose-500 border border-rose-500/20 transition group";
                 } else {
-                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-cyan-950/20 text-[#00f0ff] border border-cyan-500/20 transition group";
+                    activeLink.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider bg-blue-600/10 text-blue-500 border border-blue-500/20 transition group";
                 }
             }
 
@@ -489,7 +520,7 @@
             views.forEach(v => {
                 const link = document.getElementById('nav-' + v);
                 if (link) {
-                    link.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/30 border border-transparent transition group";
+                    link.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-mono tracking-wider text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition group";
                 }
             });
         }
@@ -498,12 +529,12 @@
             currentFilter = status;
             const tabs = document.querySelectorAll('button[id^="tab-"]');
             tabs.forEach(tab => {
-                tab.classList.remove('bg-[#00f0ff]', 'text-[#07080a]');
-                tab.classList.add('text-slate-400');
+                tab.className = "px-4 py-2 text-slate-400 hover:text-white hover:bg-white/5 transition rounded-lg uppercase";
             });
             const activeTab = document.getElementById('tab-' + status);
-            activeTab.classList.add('bg-[#00f0ff]', 'text-[#07080a]');
-            activeTab.classList.remove('text-slate-400');
+            if (activeTab) {
+                activeTab.className = "px-4 py-2 bg-blue-600 text-white transition rounded-lg uppercase";
+            }
 
             applyFilter();
         }
@@ -616,10 +647,10 @@
                 const info = bans[ip];
                 const expires = info.expires_at ? info.expires_at.replace('T', ' ').substring(0, 16) : "Permanent";
                 html += `
-                    <div class="bg-[#0b0d12] p-3 rounded-lg border border-red-950 text-xs font-mono">
+                    <div class="bg-rose-950/10 p-3 rounded-lg border border-rose-500/10 text-xs font-mono">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="font-bold text-red-500">${ip}</span>
-                            <button onclick="unbanIP('${ip}')" class="text-slate-400 hover:text-white underline">Unban</button>
+                            <span class="font-bold text-rose-400">${ip}</span>
+                            <button onclick="unbanIP('${ip}')" class="text-slate-400 hover:text-white underline transition">Unban</button>
                         </div>
                         <div class="text-slate-500 mt-1 break-words">Reason: ${escapeHtml(info.reason || "N/A")}</div>
                         <div class="text-[10px] text-slate-600 mt-1">Expires: ${expires}</div>
@@ -643,21 +674,21 @@
                 const isBanned = s.ip in bannedIps;
 
                 let badgeClass = '';
-                if (s.status === 'pending') badgeClass = 'bg-amber-950 text-amber-400';
-                else if (s.status === 'considering') badgeClass = 'bg-blue-950 text-blue-400';
-                else if (s.status === 'accepted') badgeClass = 'bg-emerald-950 text-emerald-400';
-                else if (s.status === 'declined') badgeClass = 'bg-rose-950 text-rose-400';
+                if (s.status === 'pending') badgeClass = 'bg-amber-950/40 text-amber-400 border border-amber-500/20';
+                else if (s.status === 'considering') badgeClass = 'bg-blue-950/40 text-blue-400 border border-blue-500/20';
+                else if (s.status === 'accepted') badgeClass = 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/20';
+                else if (s.status === 'declined') badgeClass = 'bg-rose-950/40 text-rose-400 border border-rose-500/20';
 
                 const banBtn = isBanned
-                    ? `<button onclick="unbanIP('${s.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-bold uppercase transition">Unban IP</button>`
-                    : `<button onclick="openBanModal('${s.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded-lg font-bold uppercase transition">Ban IP</button>`;
+                    ? `<button onclick="unbanIP('${s.ip}')" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg font-medium uppercase border border-zinc-700 transition">Unban IP</button>`
+                    : `<button onclick="openBanModal('${s.ip}')" class="px-3 py-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white text-xs rounded-lg font-medium uppercase border border-rose-500/20 transition">Ban IP</button>`;
 
                 const bannedTag = isBanned
-                    ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
+                    ? '<span class="px-1.5 py-0.2 bg-rose-950/50 text-rose-400 text-[9px] rounded font-bold uppercase border border-rose-500/20">Banned</span>'
                     : '';
 
                 html += `
-                    <div class="suggestion-card cyber-panel p-5 rounded-xl border border-slate-800 flex flex-col gap-3" data-status="${s.status || 'pending'}">
+                    <div class="suggestion-card premium-glass p-5 rounded-xl border border-white/5 flex flex-col gap-3" data-status="${s.status || 'pending'}">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div class="flex items-center gap-3">
                                 <span class="text-sm font-bold text-slate-200">${escapeHtml(s.name || 'Anonymous')}</span>
@@ -669,14 +700,14 @@
                                 ${bannedTag}
                             </div>
                         </div>
-                        <p class="text-sm text-slate-300 bg-[#0b0d12] p-4 rounded-lg border border-slate-900 leading-relaxed font-mono whitespace-pre-wrap">${escapeHtml(s.suggestion)}</p>
+                        <p class="text-sm text-slate-300 bg-black/20 p-4 rounded-lg border border-white/5 leading-relaxed font-mono whitespace-pre-wrap">${escapeHtml(s.suggestion)}</p>
                         
-                        <div class="flex flex-wrap justify-between items-center gap-4 mt-1 border-t border-slate-900/60 pt-3 font-mono">
+                        <div class="flex flex-wrap justify-between items-center gap-4 mt-1 border-t border-white/5 pt-3 font-mono">
                             <div class="flex gap-2">
-                                <button onclick="updateStatus(${s.id}, 'accepted')" class="px-3 py-1 bg-emerald-950 hover:bg-emerald-900 text-emerald-400 text-xs rounded-lg font-bold uppercase transition">Accept</button>
-                                <button onclick="updateStatus(${s.id}, 'considering')" class="px-3 py-1 bg-blue-950 hover:bg-blue-900 text-blue-400 text-xs rounded-lg font-bold uppercase transition">Consider</button>
-                                <button onclick="updateStatus(${s.id}, 'declined')" class="px-3 py-1 bg-rose-950 hover:bg-rose-900 text-rose-400 text-xs rounded-lg font-bold uppercase transition">Decline</button>
-                                <button onclick="updateStatus(${s.id}, 'pending')" class="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs rounded-lg font-bold uppercase transition">Pending</button>
+                                <button onclick="updateStatus(${s.id}, 'accepted')" class="px-3 py-1 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white text-xs rounded-lg font-medium uppercase border border-emerald-500/20 transition">Accept</button>
+                                <button onclick="updateStatus(${s.id}, 'considering')" class="px-3 py-1 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-xs rounded-lg font-medium uppercase border border-blue-500/20 transition">Consider</button>
+                                <button onclick="updateStatus(${s.id}, 'declined')" class="px-3 py-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white text-xs rounded-lg font-medium uppercase border border-rose-500/20 transition">Decline</button>
+                                <button onclick="updateStatus(${s.id}, 'pending')" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs rounded-lg font-medium uppercase border border-zinc-700 transition">Pending</button>
                             </div>
                             <div>
                                 ${banBtn}
@@ -703,20 +734,20 @@
                 const isBanned = c.ip in bannedIps;
 
                 const banBtn = isBanned
-                    ? `<button onclick="unbanIP('${c.ip}')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-bold uppercase transition">Unban IP</button>`
-                    : `<button onclick="openBanModal('${c.ip}')" class="px-3 py-1 bg-red-950/40 hover:bg-red-950 text-red-500 text-xs rounded-lg font-bold uppercase transition">Ban IP</button>`;
+                    ? `<button onclick="unbanIP('${c.ip}')" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded-lg font-medium uppercase border border-zinc-700 transition">Unban IP</button>`
+                    : `<button onclick="openBanModal('${c.ip}')" class="px-3 py-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white text-xs rounded-lg font-medium uppercase border border-rose-500/20 transition">Ban IP</button>`;
 
                 const bannedTag = isBanned
-                    ? '<span class="px-1.5 py-0.2 bg-red-950 text-red-500 text-[9px] rounded font-bold uppercase">Banned</span>'
+                    ? '<span class="px-1.5 py-0.2 bg-rose-950/50 text-rose-400 text-[9px] rounded font-bold uppercase border border-rose-500/20">Banned</span>'
                     : '';
 
                 html += `
-                    <div class="cyber-panel p-5 rounded-xl border border-slate-800 flex flex-col gap-3">
+                    <div class="premium-glass p-5 rounded-xl border border-white/5 flex flex-col gap-3">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div class="flex items-center gap-3">
-                                <span class="text-sm font-bold text-rose-500 font-reactor">[ CRASH #${c.id} ]</span>
+                                <span class="text-sm font-bold text-rose-500 font-display">[ CRASH #${c.id} ]</span>
                                 <span class="text-[10px] text-slate-500 font-mono">${timeStr}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-rose-950 text-rose-400 font-mono">v${escapeHtml(c.version)}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-rose-950/50 text-rose-400 border border-rose-500/20 font-mono">v${escapeHtml(c.version)}</span>
                             </div>
                             <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
                                 <span>Sender IP: <span class="text-slate-300">${c.ip}</span></span>
@@ -725,18 +756,18 @@
                         </div>
                         
                         <div class="flex flex-col gap-3 font-mono">
-                            <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
+                            <details class="bg-black/20 border border-white/5 rounded-lg p-3 cursor-pointer">
                                 <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Traceback Details</summary>
-                                <pre class="text-xs text-rose-500 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-rose-950/40 select-text cursor-text">${escapeHtml(c.traceback)}</pre>
+                                <pre class="text-xs text-rose-400 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-rose-950/10 rounded-lg border border-rose-500/10 select-text cursor-text">${escapeHtml(c.traceback)}</pre>
                             </details>
                             
-                            <details class="bg-[#0b0d12] border border-slate-900 rounded-lg p-3 cursor-pointer">
+                            <details class="bg-black/20 border border-white/5 rounded-lg p-3 cursor-pointer">
                                 <summary class="text-xs font-bold text-slate-400 select-none uppercase hover:text-slate-200">Show Diagnostic Log</summary>
-                                <pre class="text-xs text-slate-300 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-slate-800 select-text cursor-text">${escapeHtml(c.log_data || 'No logs captured.')}</pre>
+                                <pre class="text-xs text-slate-300 mt-2 font-mono whitespace-pre overflow-x-auto p-3 bg-black/40 rounded-lg border border-white/5 select-text cursor-text">${escapeHtml(c.log_data || 'No logs captured.')}</pre>
                             </details>
                         </div>
                         
-                        <div class="flex justify-end items-center gap-4 mt-1 border-t border-slate-900/60 pt-3 font-mono">
+                        <div class="flex justify-end items-center gap-4 mt-1 border-t border-white/5 pt-3 font-mono">
                             <div>
                                 ${banBtn}
                             </div>
@@ -766,9 +797,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, status })
                 });
-                if (response.ok) {
-                    await fetchDashboardData();
-                } else {
+                if (!response.ok) {
                     alert('Failed to update status.');
                 }
             } catch (err) {
@@ -783,9 +812,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ip })
                 });
-                if (response.ok) {
-                    await fetchDashboardData();
-                } else {
+                if (!response.ok) {
                     alert('Failed to unban IP.');
                 }
             } catch (err) {
@@ -818,7 +845,6 @@
                 if (response.ok) {
                     closeBanModal();
                     document.getElementById('ban-reason').value = '';
-                    await fetchDashboardData();
                 } else {
                     alert('Failed to ban IP.');
                 }
@@ -840,12 +866,12 @@
                 for (const admin of admins) {
                     const timeStr = admin.created_at ? admin.created_at.substring(0, 19).replace('T', ' ') : "N/A";
                     html += `
-                        <div class="bg-[#0b0d12] p-4 rounded-lg border border-slate-900 flex justify-between items-center text-xs font-mono">
+                        <div class="bg-black/20 p-4 rounded-lg border border-white/5 flex justify-between items-center text-xs font-mono">
                             <div>
                                 <span class="font-bold text-slate-200">${escapeHtml(admin.username)}</span>
                                 <div class="text-[10px] text-slate-600 mt-1">Created: ${timeStr}</div>
                             </div>
-                            <button onclick="deleteAdmin('${escapeHtml(admin.username)}')" class="px-3 py-1 bg-rose-950/40 hover:bg-rose-950 text-rose-500 hover:text-white rounded-lg uppercase tracking-wider font-bold transition">Delete</button>
+                            <button onclick="deleteAdmin('${escapeHtml(admin.username)}')" class="px-3 py-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg uppercase border border-rose-500/20 font-bold transition">Delete</button>
                         </div>
                     `;
                 }
@@ -879,7 +905,6 @@
                     if (response.ok) {
                         usernameInput.value = '';
                         passwordInput.value = '';
-                        await fetchAccountsData();
                         alert(resData.message);
                     } else {
                         alert(resData.detail || 'Failed to create account.');
@@ -905,7 +930,6 @@
                     });
                     const resData = await response.json();
                     if (response.ok) {
-                        await fetchAccountsData();
                         alert(resData.message);
                     } else {
                         alert(resData.detail || 'Failed to delete account.');
