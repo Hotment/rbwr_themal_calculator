@@ -879,9 +879,9 @@ def start_console_handler():
         
         handler = InputHandler(logger=app.logger)
         
-        @handler.command(name="restart", description="Restarts the web server and pulls latest code from origin.")
-        def restart_cmd():
-            safe_print("Restarting web server and pulling changes...")
+        @handler.command(name="update", description="Updates the web server and pulls latest code from origin.")
+        def update_cmd():
+            safe_print("Updating the web server and pulling changes...")
             try:
                 if os.path.exists(".git"):
                     safe_print("Git repository found, pulling changes...")
@@ -910,7 +910,6 @@ def start_console_handler():
                 safe_print(f"Error restarting server: {e}")
 
         handler.start()
-        safe_print("Console command handler started. Type 'restart' to reload.")
     except Exception:
         pass
 
