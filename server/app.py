@@ -455,6 +455,14 @@ def root():
         release_notes=release_notes
     )
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "static"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon"
+    )
+
 @app.route("/calculator", methods=["GET"])
 def calculator_page():
     data = load_versions()
