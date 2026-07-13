@@ -4,6 +4,7 @@
 
 {% block nav %}
 <a href="/calculator" class="hover:text-white transition-colors">Web Calculator</a>
+<a href="/points" class="hover:text-white transition-colors">Points Calculator</a>
 <a href="#features" class="hover:text-white transition-colors">Features</a>
 <a href="#download" class="hover:text-white transition-colors">Download</a>
 <a href="#feedback" class="hover:text-white transition-colors">Feedback</a>
@@ -12,14 +13,14 @@
 {% endblock %}
 
 {% block mobile_nav %}
+<a href="/calculator" class="px-2 py-1.5 border border-white/10 text-gray-300 rounded font-medium text-xs mr-1">Calc</a>
+<a href="/points" class="px-2 py-1.5 border border-white/10 text-gray-300 rounded font-medium text-xs mr-1">Points</a>
 <a href="/admin/suggestions"
-    class="px-3 py-1.5 border border-white/10 text-gray-300 rounded font-medium text-xs">Admin</a>
+    class="px-2 py-1.5 border border-white/10 text-gray-300 rounded font-medium text-xs">Admin</a>
 {% endblock %}
 
 {% block content %}
 <main class="flex-grow max-w-6xl mx-auto px-6 py-12 md:py-20 w-full flex flex-col gap-24">
-
-    <!-- Hero Section -->
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         <div class="lg:col-span-7 flex flex-col gap-6">
             <div

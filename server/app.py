@@ -461,6 +461,12 @@ def calculator_page():
     latest_ver = data.get("latest", "1.5.5")
     return render_template("calculator.html", latest_version=latest_ver)
 
+@app.route("/points", methods=["GET"])
+def points_page():
+    data = load_versions()
+    latest_ver = data.get("latest", "1.5.5")
+    return render_template("points.html", latest_version=latest_ver)
+
 @app.route("/version/latest", methods=["GET"])
 def get_latest_version():
     data = load_versions()
