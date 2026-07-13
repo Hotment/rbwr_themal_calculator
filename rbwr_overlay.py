@@ -10,7 +10,7 @@ import re
 import queue
 from PIL import Image, ImageDraw, ImageTk
 
-__version__ = "1.6.6"
+__version__ = "1.6.7"
 
 # --- Update Server Configuration ---
 SUGGESTIONS_SERVER_URL = "https://rbwr.hotment.dev"
@@ -751,6 +751,7 @@ class OverlayApp:
             self.build_compact_layout()
         else:
             self.build_detailed_layout()
+        self.update_recirc_indicator_ui()
 
     def make_draggable(self, widget):
         widget.bind("<Button-1>", self.start_drag)
@@ -834,6 +835,10 @@ class OverlayApp:
         self.btn_topmost.bind("<Button-1>", lambda e: self.toggle_topmost())
         self.btn_topmost.bind("<Enter>", lambda e: self.btn_topmost.config(bg=BG_CARD, fg=ACCENT_CYAN))
         self.btn_topmost.bind("<Leave>", lambda e: self.btn_topmost.config(bg=BG_HEADER, fg=TEXT_MUTED))
+
+        self.lbl_recirc_indicator = tk.Label(title_bar, text="", bg=BG_HEADER, fg=ACCENT_GOLD,
+                                             font=("Segoe UI", 8, "bold"), cursor="hand2")
+        self.lbl_recirc_indicator.bind("<Button-1>", lambda e: self.reset_recirc_override())
 
         container = tk.Frame(self.root, bg=BG_MAIN, padx=15, pady=15)
         container.pack(fill="both", expand=True)
@@ -1023,10 +1028,10 @@ class OverlayApp:
         btn_add10.bind("<Enter>", lambda e: btn_add10.config(fg=TEXT_LIGHT))
         btn_add10.bind("<Leave>", lambda e: btn_add10.config(fg=ACCENT_CYAN))
 
-        lbl_arrow = tk.Label(compact_frame, text="➔", bg=BG_HEADER, fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold"))
-        lbl_arrow.pack(side="left", padx=2)
-        self.make_draggable(lbl_arrow)
-        lbl_arrow.bind("<Double-Button-1>", lambda e: self.toggle_compact())
+        self.lbl_arrow_ref = tk.Label(compact_frame, text="➔", bg=BG_HEADER, fg=ACCENT_CYAN, font=("Segoe UI", 10, "bold"))
+        self.lbl_arrow_ref.pack(side="left", padx=2)
+        self.make_draggable(self.lbl_arrow_ref)
+        self.lbl_arrow_ref.bind("<Double-Button-1>", lambda e: self.toggle_compact())
 
         # Stack RTP and Flow vertically to save horizontal space
         self.telemetry_frame = tk.Frame(compact_frame, bg=BG_HEADER)
@@ -2614,6 +2619,7 @@ class OverlayApp:
             self.updating_fields = False
 
     def render_outputs(self, thermal, flow, gen_load):
+        self.update_recirc_indicator_ui()
         limit = 108
         unit_suffix = "APRM" if self.calc.selected_unit == 1 else "RTP"
         if not self.is_compact:
@@ -2641,6 +2647,7 @@ class OverlayApp:
                 self.telemetry_frame.place(x=x_pos)
 
     def show_error_state(self):
+        self.update_recirc_indicator_ui()
         if not self.is_compact:
             self.lbl_gen_val.config(text="⚠️ ERROR", fg=ACCENT_RED)
             self.lbl_feed_val.config(text="⚠️ ERROR", fg=ACCENT_RED)
@@ -2653,6 +2660,25 @@ class OverlayApp:
             self.lbl_compact_flow.config(text="[---]", fg=ACCENT_RED)
             if hasattr(self, 'telemetry_frame') and self.telemetry_frame and self.telemetry_frame.winfo_exists():
                 self.telemetry_frame.place(x=288)
+
+    def update_recirc_indicator_ui(self):
+        override_active = self.calc.recirc_override is not None
+        
+        if hasattr(self, 'lbl_recirc_indicator') and self.lbl_recirc_indicator and self.lbl_recirc_indicator.winfo_exists():
+            if override_active:
+                val = self.calc.recirc_override
+                self.lbl_recirc_indicator.config(text=f"🔄 OVR: {val:.0f}%")
+                self.lbl_recirc_indicator.pack(side="right", padx=5)
+            else:
+                self.lbl_recirc_indicator.pack_forget()
+                
+        if hasattr(self, 'lbl_arrow_ref') and self.lbl_arrow_ref and self.lbl_arrow_ref.winfo_exists():
+            if override_active:
+                self.lbl_arrow_ref.config(text="🔄", fg=ACCENT_GOLD, cursor="hand2")
+                self.lbl_arrow_ref.bind("<Button-1>", lambda e: self.reset_recirc_override())
+            else:
+                self.lbl_arrow_ref.config(text="➔", fg=ACCENT_CYAN, cursor="")
+                self.lbl_arrow_ref.bind("<Button-1>", self.start_drag)
 
 
 if __name__ == "__main__":
