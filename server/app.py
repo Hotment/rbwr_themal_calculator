@@ -853,6 +853,69 @@ def admin_logout():
     session.clear()
     return redirect("/admin/login")
 
+_singleton_socket = None
+
+def is_singleton():
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(('127.0.0.1', 8405))
+        s.listen(1)
+        global _singleton_socket
+        _singleton_socket = s
+        return True
+    except Exception:
+        return False
+
+def start_console_handler():
+    if not is_singleton():
+        return
+        
+    try:
+        from cli_ih import InputHandler, safe_print
+        import subprocess
+        import signal
+        import sys
+        
+        handler = InputHandler(logger=app.logger)
+        
+        @handler.command(name="restart", description="Restarts the web server and pulls latest code from origin.")
+        def restart_cmd():
+            safe_print("Restarting web server and pulling changes...")
+            try:
+                if os.path.exists(".git"):
+                    safe_print("Git repository found, pulling changes...")
+                    subprocess.run("git config core.sparseCheckout true", shell=True, check=True)
+                    sparse_file = os.path.join(".git", "info", "sparse-checkout")
+                    os.makedirs(os.path.dirname(sparse_file), exist_ok=True)
+                    with open(sparse_file, "w") as f:
+                        f.write("server/*\n")
+                    subprocess.run("git pull origin main", shell=True, check=True)
+                
+                if os.path.exists("server"):
+                    safe_print("Copying server files...")
+                    subprocess.run("cp -a server/. . && rm -rf server", shell=True, check=True)
+            except Exception as e:
+                safe_print(f"Error during git pull/copy: {e}")
+                
+            try:
+                is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "").lower()
+                if is_gunicorn:
+                    safe_print("Sending SIGHUP to Gunicorn master process...")
+                    os.kill(os.getppid(), signal.SIGHUP)
+                else:
+                    safe_print("Restarting local Flask server via execv...")
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+            except Exception as e:
+                safe_print(f"Error restarting server: {e}")
+
+        handler.start()
+        safe_print("Console command handler started. Type 'restart' to reload.")
+    except Exception:
+        pass
+
+start_console_handler()
+
 if __name__ == "__main__":
     import sys
     
@@ -864,4 +927,4 @@ if __name__ == "__main__":
     except ValueError:
         port = 8400
         
-    app.run(host=host, port=port, debug=True)
+    app.run(host=host, port=port, debug=False)
