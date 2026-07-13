@@ -339,6 +339,12 @@
                         class="text-6xl md:text-7xl font-display font-light tracking-tight text-white mb-0 drop-shadow-sm font-mono">
                         2.900<span class="text-xl md:text-2xl text-gray-500 font-medium ml-1">pts/s</span>
                     </div>
+                    <div class="flex justify-center gap-6 text-xs text-gray-400 mt-2 font-mono">
+                        <div>U1: <span id="display-u1-net-rate" class="text-gray-200 font-medium">1.200</span> / 1.200
+                            pts/s</div>
+                        <div>U2: <span id="display-u2-net-rate" class="text-gray-200 font-medium">1.733</span> / 1.733
+                            pts/s</div>
+                    </div>
                     <div class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mt-4">
                         Points Accumulation Rate
                     </div>
@@ -433,6 +439,8 @@
 
 {% block scripts %}
 <script>
+    const IGNORE_U2_FOR_LOW_RANKS = true;
+
     class Rank {
         constructor(name, points) {
             this.name = name;
@@ -507,18 +515,33 @@
         }
     }
 
-    function calculateRank(totalPoints) {
+    function calculateRank(u1Val, u2Val) {
         let currentRank = ranks[ranks.length - 1];
         let nextRank = null;
         let prevRankPoints = 0;
         let remainingPoints = 0;
 
+        const isLowRank = u1Val < 5000;
+
         for (let i = 0; i < ranks.length; i++) {
-            if (totalPoints >= ranks[i].points) {
+            let pointsToUse = u1Val + u2Val;
+            if (IGNORE_U2_FOR_LOW_RANKS && isLowRank) {
+                pointsToUse = u1Val;
+            }
+            if (pointsToUse >= ranks[i].points) {
                 currentRank = ranks[i];
                 nextRank = ranks[i - 1] || null;
                 prevRankPoints = ranks[i].points;
-                remainingPoints = nextRank ? nextRank.points - totalPoints : 0;
+
+                if (nextRank) {
+                    let nextPointsToUse = u1Val + u2Val;
+                    if (IGNORE_U2_FOR_LOW_RANKS && isLowRank) {
+                        nextPointsToUse = u1Val;
+                    }
+                    remainingPoints = nextRank.points - nextPointsToUse;
+                } else {
+                    remainingPoints = 0;
+                }
                 break;
             }
         }
@@ -597,12 +620,17 @@
         const u2AbnormalRate = calculateAbnormalRate(u2Rate, subsystemStates.u2_abnormal_config, 1.2);
         const totalRate = u1Rate + u2Rate + tcrRate + demandRate - u1AbnormalRate - u2AbnormalRate;
 
+        const u1NetRate = u1Rate - u1AbnormalRate + (demandRate / 2.0);
+        const u2NetRate = u2Rate - u2AbnormalRate + tcrRate + (demandRate / 2.0);
+
         document.getElementById('u1-rate').textContent = u1Rate.toFixed(3);
         document.getElementById('u2-rate').textContent = u2Rate.toFixed(3);
         document.getElementById('tcr-rate').textContent = tcrRate.toFixed(3);
         document.getElementById('demand-rate').textContent = demandRate.toFixed(3);
         document.getElementById('u1-abnormal-rate').textContent = u1AbnormalRate.toFixed(3);
         document.getElementById('abnormal-rate').textContent = u2AbnormalRate.toFixed(3);
+        document.getElementById('display-u1-net-rate').textContent = u1NetRate.toFixed(3);
+        document.getElementById('display-u2-net-rate').textContent = u2NetRate.toFixed(3);
 
         const rateLabelEl = document.getElementById('display-total-rate');
         rateLabelEl.innerHTML = `${totalRate.toFixed(3)}<span class="text-xl md:text-2xl text-gray-500 font-medium ml-1">pts/s</span>`;
@@ -633,11 +661,12 @@
         const u2Input = document.getElementById('unit2');
         const u1Val = parseFloat(u1Input.value) || 0;
         const u2Val = parseFloat(u2Input.value) || 0;
-        const totalPoints = u1Val + u2Val;
 
-        document.getElementById('display-total-points').textContent = Math.floor(totalPoints).toLocaleString();
+        const { currentRank, nextRank, remainingPoints, prevRankPoints } = calculateRank(u1Val, u2Val);
 
-        const { currentRank, nextRank, remainingPoints, prevRankPoints } = calculateRank(totalPoints);
+        const isLowRank = u1Val < 5000;
+        const totalPointsForDisplay = (IGNORE_U2_FOR_LOW_RANKS && isLowRank) ? u1Val : (u1Val + u2Val);
+        document.getElementById('display-total-points').textContent = Math.floor(totalPointsForDisplay).toLocaleString();
 
         document.getElementById('current-rank').textContent = currentRank.name;
 
@@ -653,17 +682,25 @@
             nextRankEl.className = "text-lg font-bold text-blue-400 font-display";
             ptsNeededEl.textContent = Math.floor(remainingPoints).toLocaleString();
 
-            const pointsInCurrentRank = totalPoints - prevRankPoints;
+            const pointsInCurrentRank = totalPointsForDisplay - prevRankPoints;
             const pointsNeededForNext = nextRank.points - prevRankPoints;
             const percent = Math.min(100, Math.max(0, (pointsInCurrentRank / pointsNeededForNext) * 100));
 
             progressBar.style.width = `${percent}%`;
             progressPercent.textContent = `${percent.toFixed(1)}%`;
-            progressPts.textContent = `${Math.floor(totalPoints).toLocaleString()} / ${Math.floor(nextRank.points).toLocaleString()} pts`;
+            progressPts.textContent = `${Math.floor(totalPointsForDisplay).toLocaleString()} / ${Math.floor(nextRank.points).toLocaleString()} pts`;
 
             const activeRate = updateRates();
-            if (activeRate > 0) {
-                const totalSeconds = remainingPoints / activeRate;
+            let rateForTime = activeRate;
+            if (IGNORE_U2_FOR_LOW_RANKS && isLowRank) {
+                const u1Rate = calculateU1Rate();
+                const u1AbnormalRate = calculateAbnormalRate(u1Rate, subsystemStates.u1_abnormal_config, 1.0);
+                const demandRate = calculateDemandRate();
+                rateForTime = u1Rate - u1AbnormalRate + (demandRate / 2.0);
+            }
+
+            if (rateForTime > 0) {
+                const totalSeconds = remainingPoints / rateForTime;
                 timeUntilEl.textContent = formatTime(totalSeconds);
             } else {
                 timeUntilEl.textContent = "Infinite";
@@ -674,7 +711,7 @@
             ptsNeededEl.textContent = "0";
             progressBar.style.width = `100%`;
             progressPercent.textContent = `100%`;
-            progressPts.textContent = `${Math.floor(totalPoints).toLocaleString()} pts`;
+            progressPts.textContent = `${Math.floor(totalPointsForDisplay).toLocaleString()} pts`;
             timeUntilEl.textContent = "N/A";
         }
     }
