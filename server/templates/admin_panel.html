@@ -388,7 +388,7 @@
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Target IP Address</label>
                 <input type="text" id="ban-ip-field" readonly
-                    class="premium-input p-3 rounded-lg outline-none opacity-60">
+                    class="premium-input p-3 rounded-lg outline-none opacity-60 blur-sm hover:blur-none focus:blur-none transition">
             </div>
             <div class="flex flex-col gap-1 text-xs font-mono">
                 <label class="text-slate-500 uppercase">Ban Expiration / Duration</label>
@@ -642,7 +642,7 @@
                 html += `
                     <div class="bg-rose-950/10 p-3 rounded-lg border border-rose-500/10 text-xs font-mono">
                         <div class="flex justify-between items-center mb-1">
-                            <span class="font-bold text-rose-400">${ip}</span>
+                            <span class="bg-rose-950/40 text-transparent hover:text-rose-400 cursor-pointer px-1.5 py-0.5 rounded border border-rose-500/20 transition select-none hover:select-text font-bold" onclick="this.classList.toggle('text-transparent')" title="Click to reveal IP">${ip}</span>
                             <button onclick="unbanIP('${ip}')" class="text-slate-400 hover:text-white underline transition">Unban</button>
                         </div>
                         <div class="text-slate-500 mt-1 break-words">Reason: ${escapeHtml(info.reason || "N/A")}</div>
@@ -689,7 +689,6 @@
                                 <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${badgeClass}">${s.status}</span>
                             </div>
                             <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
-                                <span>Sender IP: <span class="text-slate-300">${s.ip}</span></span>
                                 ${bannedTag}
                             </div>
                         </div>
@@ -743,7 +742,6 @@
                                 <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-rose-950/50 text-rose-400 border border-rose-500/20 font-mono">v${escapeHtml(c.version)}</span>
                             </div>
                             <div class="text-[11px] text-slate-400 flex items-center gap-2 font-mono">
-                                <span>Sender IP: <span class="text-slate-300">${c.ip}</span></span>
                                 ${bannedTag}
                             </div>
                         </div>
